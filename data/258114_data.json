@@ -1,0 +1,1847 @@
+{
+    "StudentInfo": {
+        "Timestamp": "10/03/2026 12:33:38",
+        "Email address": "hanumanthanh02@gmail.com",
+        "Name": "Hanumanthan P M",
+        "Roll No": "258114",
+        "Date Of Birth": "06/06/2005"
+    },
+    "ParentPortal": {
+        "Info": {
+            "Name": "HANUMANTHAN  P M",
+            "RollNo": "258114",
+            "RegNo": "910625301016",
+            "Department": "MCA",
+            "Batch": "2025 - 2027",
+            "Semester": "1"
+        },
+        "Marks": [
+            {
+                "Sem": "1",
+                "Subject": "24AC107 - Audit Course - Stress Management by Yoga",
+                "Grade": "PASS"
+            },
+            {
+                "Sem": "1",
+                "Subject": "24FC101 - Probability and Statistics",
+                "Grade": "A"
+            },
+            {
+                "Sem": "1",
+                "Subject": "24MC102 - Advanced Database Technology",
+                "Grade": "A+"
+            },
+            {
+                "Sem": "1",
+                "Subject": "24MC103 - Python Programming",
+                "Grade": "B+"
+            },
+            {
+                "Sem": "1",
+                "Subject": "24MC104 - Object Oriented Software Engineering",
+                "Grade": "A"
+            },
+            {
+                "Sem": "1",
+                "Subject": "24MC105 - Modern Operating Systems",
+                "Grade": "A"
+            },
+            {
+                "Sem": "1",
+                "Subject": "24MC1L1 - Python Programming Laboratory",
+                "Grade": "A"
+            },
+            {
+                "Sem": "1",
+                "Subject": "24MC1L2 - Advanced Database Technology Laboratory",
+                "Grade": "O"
+            },
+            {
+                "Sem": "1",
+                "Subject": "24MC1L3 - Communication Skills Laboratory \u2013 I",
+                "Grade": "A+"
+            },
+            {
+                "Sem": "1",
+                "Subject": "24RM101 - Research Methodology and IPR",
+                "Grade": "A"
+            }
+        ],
+        "DetailedAttendance": {
+            "Semester_1": [
+                {
+                    "Date": "21-08-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "22-08-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "23-08-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "25-08-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "26-08-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "28-08-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A"
+                    ]
+                },
+                {
+                    "Date": "29-08-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A"
+                    ]
+                },
+                {
+                    "Date": "01-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "02-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "03-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "04-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "08-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "09-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "10-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "12-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "13-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "15-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "16-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "17-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "18-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "19-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "20-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "22-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A"
+                    ]
+                },
+                {
+                    "Date": "23-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "24-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "25-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "26-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "27-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "29-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "A",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "30-09-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "06-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A"
+                    ]
+                },
+                {
+                    "Date": "07-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "08-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "09-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "10-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "11-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "13-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "14-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "15-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "16-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "17-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A"
+                    ]
+                },
+                {
+                    "Date": "22-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A"
+                    ]
+                },
+                {
+                    "Date": "23-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "24-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "25-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "28-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "29-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "31-10-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "01-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "03-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "04-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "05-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "06-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "07-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "08-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "10-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A"
+                    ]
+                },
+                {
+                    "Date": "11-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "12-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "13-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "14-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "17-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A"
+                    ]
+                },
+                {
+                    "Date": "18-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "19-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "20-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "21-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "22-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "24-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A"
+                    ]
+                },
+                {
+                    "Date": "25-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "26-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "27-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "28-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "29-11-2025",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                }
+            ],
+            "Semester_2": [
+                {
+                    "Date": "09-01-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A"
+                    ]
+                },
+                {
+                    "Date": "10-01-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A"
+                    ]
+                },
+                {
+                    "Date": "12-01-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "13-01-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "14-01-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "19-01-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A"
+                    ]
+                },
+                {
+                    "Date": "20-01-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "21-01-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "22-01-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "23-01-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "24-01-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "27-01-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A"
+                    ]
+                },
+                {
+                    "Date": "28-01-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "29-01-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "30-01-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "02-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "03-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "04-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "05-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "06-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "09-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A"
+                    ]
+                },
+                {
+                    "Date": "10-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "11-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "12-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "13-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "14-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "16-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "17-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "18-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "19-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "20-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "A",
+                        "A",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "23-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "24-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "25-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "26-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "27-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "28-02-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "02-03-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "03-03-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "04-03-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "05-03-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P",
+                        "P"
+                    ]
+                },
+                {
+                    "Date": "06-03-2026",
+                    "HoursPerDay": "7",
+                    "Status": [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A"
+                    ]
+                }
+            ]
+        },
+        "AttendanceSummary": [
+            {
+                "Semester": "1",
+                "Working": "504",
+                "Present": "440",
+                "Percentage": "87.3%"
+            },
+            {
+                "Semester": "2",
+                "Working": "294",
+                "Present": "250",
+                "Percentage": "85.03%"
+            }
+        ],
+        "CITMarks": {
+            "Semester_1": {
+                "Test_1": [
+                    {
+                        "SlNo": "1",
+                        "Date": "24-09-2025",
+                        "Subject": "ADVANCED DATABASE TECHNOLOGY",
+                        "Marks": "88"
+                    },
+                    {
+                        "SlNo": "2",
+                        "Date": "25-09-2025",
+                        "Subject": "PYTHON PROGRAMMING",
+                        "Marks": "80"
+                    },
+                    {
+                        "SlNo": "3",
+                        "Date": "26-09-2025",
+                        "Subject": "OBJECT ORIENTED SOFTWARE ENGINEERING",
+                        "Marks": "60"
+                    },
+                    {
+                        "SlNo": "4",
+                        "Date": "27-09-2025",
+                        "Subject": "MODERN OPERATING SYSTEMS",
+                        "Marks": "76"
+                    },
+                    {
+                        "SlNo": "5",
+                        "Date": "29-09-2025",
+                        "Subject": "RESEARCH METHODOLOGY AND IPR",
+                        "Marks": "72"
+                    },
+                    {
+                        "SlNo": "6",
+                        "Date": "30-09-2025",
+                        "Subject": "PROBABILITY AND STATISTICS",
+                        "Marks": "82"
+                    },
+                    {
+                        "Total": "76.33"
+                    }
+                ],
+                "Test_2": [
+                    {
+                        "SlNo": "1",
+                        "Date": "03-11-2025",
+                        "Subject": "PROBABILITY AND STATISTICS",
+                        "Marks": "84"
+                    },
+                    {
+                        "SlNo": "2",
+                        "Date": "04-11-2025",
+                        "Subject": "ADVANCED DATABASE TECHNOLOGY",
+                        "Marks": "86"
+                    },
+                    {
+                        "SlNo": "3",
+                        "Date": "05-11-2025",
+                        "Subject": "PYTHON PROGRAMMING",
+                        "Marks": "76"
+                    },
+                    {
+                        "SlNo": "4",
+                        "Date": "06-11-2025",
+                        "Subject": "OBJECT ORIENTED SOFTWARE ENGINEERING",
+                        "Marks": "64"
+                    },
+                    {
+                        "SlNo": "5",
+                        "Date": "07-11-2025",
+                        "Subject": "MODERN OPERATING SYSTEMS",
+                        "Marks": "76"
+                    },
+                    {
+                        "SlNo": "6",
+                        "Date": "08-11-2025",
+                        "Subject": "RESEARCH METHODOLOGY AND IPR",
+                        "Marks": "71"
+                    },
+                    {
+                        "Total": "76.17"
+                    }
+                ],
+                "Test_3": [
+                    {
+                        "SlNo": "1",
+                        "Date": "26-11-2025",
+                        "Subject": "ADVANCED DATABASE TECHNOLOGY",
+                        "Marks": "90"
+                    },
+                    {
+                        "SlNo": "2",
+                        "Date": "26-11-2025",
+                        "Subject": "OBJECT ORIENTED SOFTWARE ENGINEERING",
+                        "Marks": "88"
+                    },
+                    {
+                        "SlNo": "3",
+                        "Date": "26-11-2025",
+                        "Subject": "PROBABILITY AND STATISTICS",
+                        "Marks": "92"
+                    },
+                    {
+                        "SlNo": "4",
+                        "Date": "27-11-2025",
+                        "Subject": "PYTHON PROGRAMMING",
+                        "Marks": "84"
+                    },
+                    {
+                        "SlNo": "5",
+                        "Date": "28-11-2025",
+                        "Subject": "RESEARCH METHODOLOGY AND IPR",
+                        "Marks": "78"
+                    },
+                    {
+                        "SlNo": "6",
+                        "Date": "28-11-2025",
+                        "Subject": "MODERN OPERATING SYSTEMS",
+                        "Marks": "84"
+                    },
+                    {
+                        "Total": "86"
+                    }
+                ]
+            },
+            "Semester_2": {
+                "Test_1": [
+                    {
+                        "SlNo": "1",
+                        "Date": "16-02-2026",
+                        "Subject": "INTERNET OF THINGS",
+                        "Marks": "86"
+                    },
+                    {
+                        "SlNo": "2",
+                        "Date": "17-02-2026",
+                        "Subject": "DATA STRUCTURES AND ALGORITHMS",
+                        "Marks": "87"
+                    },
+                    {
+                        "SlNo": "3",
+                        "Date": "18-02-2026",
+                        "Subject": "MACHINE LEARNING",
+                        "Marks": "58"
+                    },
+                    {
+                        "SlNo": "4",
+                        "Date": "19-02-2026",
+                        "Subject": "ADVANCED JAVA",
+                        "Marks": "65"
+                    },
+                    {
+                        "SlNo": "5",
+                        "Date": "20-02-2026",
+                        "Subject": "MOBILE COMPUTING",
+                        "Marks": "64"
+                    },
+                    {
+                        "SlNo": "6",
+                        "Date": "23-02-2026",
+                        "Subject": "OPERATION RESEARCH",
+                        "Marks": "50"
+                    },
+                    {
+                        "Total": "68.33"
+                    }
+                ],
+                "Test_2": [],
+                "Test_3": []
+            },
+            "Semester_3": {
+                "Test_1": [],
+                "Test_2": [],
+                "Test_3": []
+            }
+        },
+        "UniversityMarks": [
+            {
+                "SlNo": "1",
+                "Semester": "1",
+                "PaperCode": "24FC101",
+                "PaperName": "PROBABILITY AND STATISTICS",
+                "Credit": "4.00",
+                "Grade": "A",
+                "GradePoint": "8.00"
+            },
+            {
+                "SlNo": "2",
+                "Semester": "1",
+                "PaperCode": "24MC102",
+                "PaperName": "ADVANCED DATABASE TECHNOLOGY",
+                "Credit": "3.00",
+                "Grade": "A+",
+                "GradePoint": "9.00"
+            },
+            {
+                "SlNo": "3",
+                "Semester": "1",
+                "PaperCode": "24MC103",
+                "PaperName": "PYTHON PROGRAMMING",
+                "Credit": "3.00",
+                "Grade": "B+",
+                "GradePoint": "7.00"
+            },
+            {
+                "SlNo": "4",
+                "Semester": "1",
+                "PaperCode": "24MC104",
+                "PaperName": "OBJECT ORIENTED SOFTWARE ENGINEERING",
+                "Credit": "3.00",
+                "Grade": "A",
+                "GradePoint": "8.00"
+            },
+            {
+                "SlNo": "5",
+                "Semester": "1",
+                "PaperCode": "24MC105",
+                "PaperName": "MODERN OPERATING SYSTEMS",
+                "Credit": "3.00",
+                "Grade": "A",
+                "GradePoint": "8.00"
+            },
+            {
+                "SlNo": "6",
+                "Semester": "1",
+                "PaperCode": "24RM101",
+                "PaperName": "RESEARCH METHODOLOGY AND IPR",
+                "Credit": "3.00",
+                "Grade": "A",
+                "GradePoint": "8.00"
+            },
+            {
+                "SlNo": "7",
+                "Semester": "1",
+                "PaperCode": "24MC1L1",
+                "PaperName": "PYTHON PROGRAMMING LABORATORY",
+                "Credit": "1.50",
+                "Grade": "A",
+                "GradePoint": "8.00"
+            },
+            {
+                "SlNo": "8",
+                "Semester": "1",
+                "PaperCode": "24MC1L2",
+                "PaperName": "ADVANCED DATABASE TECHNOLOGY LABORATORY",
+                "Credit": "1.50",
+                "Grade": "O",
+                "GradePoint": "10.00"
+            },
+            {
+                "SlNo": "9",
+                "Semester": "1",
+                "PaperCode": "24MC1L3",
+                "PaperName": "COMMUNICATION SKILLS LABORATORY - I",
+                "Credit": "1.00",
+                "Grade": "A+",
+                "GradePoint": "9.00"
+            },
+            {
+                "SlNo": "10",
+                "Semester": "1",
+                "PaperCode": "24AC107",
+                "PaperName": "STRESS MANAGEMENT BY YOGA",
+                "Credit": "0.00",
+                "Grade": "",
+                "GradePoint": "51.00"
+            }
+        ]
+    },
+    "COEResults": [],
+    "StudentPortal": {
+        "CITMarks": {},
+        "Attendance": []
+    }
+}
