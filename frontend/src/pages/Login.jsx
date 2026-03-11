@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, Loader2 } from 'lucide-react';
 
-const API_BASE = 'https://sparkbackend.vercel.app';
+const API_BASE = 'https://automation-0pd0.onrender.com';
 
 const Login = ({ onLogin }) => {
   const [username, setUsername] = useState('');

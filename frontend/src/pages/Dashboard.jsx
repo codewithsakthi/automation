@@ -32,7 +32,7 @@ import {
   User as UserIcon,
 } from 'lucide-react';
 
-const API_BASE = 'https://sparkbackend.vercel.app';
+const API_BASE = 'https://automation-0pd0.onrender.com';
 const GRADE_COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#38bdf8', '#f97316'];
 const TAB_OPTIONS = ['Overview', 'Analytics', 'Profile', 'Security'];
 
