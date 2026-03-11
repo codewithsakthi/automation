@@ -39,10 +39,10 @@ def seed_db():
 
         # Create Test Student
         student_role = db.query(models.Role).filter(models.Role.name == 'student').first()
-        if not db.query(models.User).filter(models.User.username == '248307').first():
-            hashed_pwd = get_simple_hash('15032004') # DOB as password
+        if not db.query(models.User).filter(models.User.username == '258312').first():
+            hashed_pwd = get_simple_hash('29072003') # DOB as password
             stu_user = models.User(
-                username='248307',
+                username='258312',
                 password_hash=hashed_pwd,
                 role_id=student_role.id,
                 is_initial_password=True
@@ -52,14 +52,14 @@ def seed_db():
             
             student = models.Student(
                 id=stu_user.id,
-                roll_no='248307',
-                name='Kaviya G',
-                dob='2004-03-15',
-                batch='2024-2026'
+                roll_no='258312',
+                name='SAKTHIVEL M',
+                dob='2003-07-29',
+                batch='2025-2027'
             )
             db.add(student)
             db.commit()
-            print("Test Student created (username: 248307, password: DOB)")
+            print("Test Student created (username: 258312, password: DOB)")
 
     except Exception as e:
         print(f"Error seeding DB: {e}")

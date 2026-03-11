@@ -1217,6 +1217,10 @@ select.input-field option {
   background: rgba(255, 255, 255, 0.015);
 }
 
+.warning-row td {
+  background: rgba(239, 68, 68, 0.04);
+}
+
 .modern-table .entity-info .name {
   display: block;
   font-weight: 600;
@@ -1293,6 +1297,19 @@ select.input-field option {
   color: white;
 }
 
+.titles h1 {
+  font-size: 2rem;
+  margin-bottom: 0.35rem;
+}
+
+.titles p {
+  color: var(--text-muted);
+}
+
+.table-stage {
+  min-width: 0;
+}
+
 /* Scroll Customization */
 .scroll-y {
   overflow-y: auto;
@@ -1325,5 +1342,82 @@ select.input-field option {
   .admin-sidebar .info,
   .admin-sidebar .logout-btn {
     display: none;
+  }
+
+  .directory-header,
+  .directory-toolbar-rich,
+  .priority-split,
+  .banner-ops,
+  .select-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .kpi-grid-modern {
+    grid-template-columns: 1fr;
+  }
+
+  .search-box-rich {
+    max-width: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-pane {
+    padding: 1rem;
+  }
+
+  .welcome-banner {
+    padding: 1.5rem;
+  }
+
+  .welcome-banner h1,
+  .titles h1 {
+    font-size: 1.6rem;
+  }
+
+  .admin-top-bar {
+    padding: 0 1rem;
+  }
+
+  .record-badges {
+    justify-content: flex-start;
+  }
+
+  .modern-table th,
+  .modern-table td,
+  .admin-table th,
+  .admin-table td {
+    padding: 0.85rem 0.75rem;
+  }
+}
+
+@media print {
+  .admin-sidebar,
+  .admin-top-bar,
+  .action-link,
+  .system-msg {
+    display: none !important;
+  }
+
+  .admin-shell,
+  .admin-main,
+  .admin-pane,
+  .student-record-shell {
+    display: block;
+    height: auto;
+    overflow: visible;
+    padding: 0;
+    background: white;
+    color: black;
+  }
+
+  .glass-panel,
+  .record-panel {
+    box-shadow: none;
+    background: white;
+    border: 1px solid #d4d4d8;
+    color: black;
+    break-inside: avoid;
   }
 }

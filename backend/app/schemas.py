@@ -47,6 +47,7 @@ class CurrentUser(User):
     batch: Optional[str] = None
     current_semester: Optional[int] = None
     program_name: Optional[str] = None
+    rank: Optional[int] = None
 
 
 class ProfileUpdate(BaseModel):
@@ -88,9 +89,11 @@ class BulkImportResponse(BaseModel):
 class AdminStudentCredential(BaseModel):
     roll_no: str
     username: str
+    has_account: bool = True
     is_initial_password: bool
     initial_password_hint: Optional[str] = None
     dob_masked: Optional[str] = None
+    note: Optional[str] = None
 
 
 class StudentBase(BaseModel):
@@ -234,6 +237,7 @@ class AnalyticsSummary(BaseModel):
 
 class AdminStudentSnapshot(BaseModel):
     roll_no: str
+    reg_no: Optional[str] = None
     name: str
     batch: Optional[str] = None
     program_name: Optional[str] = None
@@ -258,6 +262,7 @@ class AdminOverview(BaseModel):
 
 class AdminDirectoryStudent(BaseModel):
     roll_no: str
+    reg_no: Optional[str] = None
     name: str
     city: Optional[str] = None
     email: Optional[str] = None
@@ -270,6 +275,7 @@ class AdminDirectoryStudent(BaseModel):
     average_grade_points: float = 0.0
     average_internal_percentage: float = 0.0
     backlogs: int = 0
+    rank: Optional[int] = None
 
 
 class AdminDirectoryInsightItem(BaseModel):
@@ -286,6 +292,22 @@ class AdminDirectoryInsights(BaseModel):
     missing_email_count: int = 0
     missing_phone_count: int = 0
     missing_batch_count: int = 0
+
+
+class AdminRiskBreakdown(BaseModel):
+    critical: int = 0
+    warning: int = 0
+    healthy: int = 0
+    missing_data: int = 0
+
+
+class AdminAnalyticsResponse(BaseModel):
+    risk_breakdown: AdminRiskBreakdown
+    batch_distribution: List[AdminDirectoryInsightItem] = Field(default_factory=list)
+    semester_distribution: List[AdminDirectoryInsightItem] = Field(default_factory=list)
+    city_distribution: List[AdminDirectoryInsightItem] = Field(default_factory=list)
+    attendance_bands: List[AdminDirectoryInsightItem] = Field(default_factory=list)
+    gpa_bands: List[AdminDirectoryInsightItem] = Field(default_factory=list)
 
 
 class ContactInfoRecord(BaseModel):

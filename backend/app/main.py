@@ -41,6 +41,25 @@ DIRECTORY_SORT_KEYS = {
     'semester': lambda item: item.current_semester or 0,
     'gpa': lambda item: item.average_grade_points or 0,
     'internal': lambda item: item.average_internal_percentage or 0,
+    'rank': lambda item: item.rank or 999999,
+    'attendance': lambda item: item.attendance_percentage or 0,
+}
+
+CURRICULUM_CREDITS = {
+    "24FC101": 4.0, "24MC103": 3.0, "24MC105": 3.0, "24MC201": 3.0,
+    "24MC203": 3.0, "24MC204": 4.0, "24MC2L3": 2.0, "24MC301": 3.0,
+    "24MC302": 3.0, "24MC303": 3.0, "24MC304": 3.0, "24MC3L2": 2.0,
+    "24MC3L3": 1.0, "24MC4L1": 12.0, "24MCBC1": 3.0, "24MCBC2": 3.0,
+    "24MCBC4": 3.0, "24MCBC5": 3.0, "24MCBC6": 3.0, "24MC102": 3.0,
+    "24MC1L1": 1.5, "24MC202": 4.0, "24RM101": 3.0, "24MC2E1": 3.0,
+    "24MC2E2": 3.0, "24MC2E4": 3.0, "24MC2E6": 3.0, "24MC2E7": 3.0,
+    "24MC2E8": 3.0, "24MC3E2": 3.0, "24MC3E3": 3.0, "24MC3E4": 3.0,
+    "24MCOE1": 3.0, "24MCOE4": 3.0, "24AC101": 0.0, "24AC102": 0.0,
+    "24AC103": 0.0, "24AC104": 0.0, "24AC105": 0.0, "24AC106": 0.0,
+    "24AC107": 0.0, "24MC104": 3.0, "24MC1L2": 1.5, "24MC1L3": 1.0,
+    "24MC2L1": 2.0, "24MC2L2": 2.0, "24MC2L4": 1.0, "24MC3L1": 2.0,
+    "24MC2E3": 3.0, "24MC2E5": 3.0, "24MC3E1": 3.0, "24MCOE2": 3.0,
+    "24MCOE3": 3.0, "24AC108": 0.0, "24MCBC3": 3.0
 }
 
 Base.metadata.create_all(bind=engine)
@@ -84,6 +103,24 @@ def get_staff_record(user: models.User, db: Session):
 def build_current_user_response(user: models.User, db: Session) -> schemas.CurrentUser:
     student = get_student_record(user, db)
     staff = None if student else get_staff_record(user, db)
+    
+    rank = None
+    if student:
+        # Re-use the ranking logic to find the specific student's rank
+        ranking_query = text(f'''
+            with rankings as (
+                select roll_no, 
+                       rank() over (order by average_grade_points desc) as rank
+                from (
+                    {_admin_directory_query().text}
+                ) as directory
+            )
+            select rank from rankings where roll_no = :roll_no
+        ''')
+        rank_row = db.execute(ranking_query, {'roll_no': student.roll_no}).mappings().first()
+        if rank_row:
+            rank = rank_row['rank']
+
     return schemas.CurrentUser(
         id=user.id,
         username=user.username,
@@ -98,6 +135,7 @@ def build_current_user_response(user: models.User, db: Session) -> schemas.Curre
         batch=student.batch if student else None,
         current_semester=student.current_semester if student else None,
         program_name=student.program.name if student and student.program else None,
+        rank=rank,
     )
 
 
@@ -137,8 +175,11 @@ def calculate_analytics(student: models.Student) -> schemas.AnalyticsSummary:
     marks = list(student.marks or [])
     attendance = sorted(list(student.attendance or []), key=lambda item: item.date)
 
-    graded_marks = [mark for mark in marks if mark.grade]
-    average_grade_points = round(sum(GRADE_POINTS.get(mark.grade, 0) for mark in graded_marks) / len(graded_marks), 2) if graded_marks else 0.0
+    graded_marks = [mark for mark in marks if mark.grade and str(mark.grade).strip() and mark.subject and CURRICULUM_CREDITS.get(mark.subject.course_code, 0) > 0]
+    total_credit_points = sum(CURRICULUM_CREDITS.get(mark.subject.course_code, 0) * GRADE_POINTS.get(mark.grade, 0) for mark in graded_marks if mark.subject)
+    total_credits = sum(CURRICULUM_CREDITS.get(mark.subject.course_code, 0) for mark in graded_marks if mark.subject)
+    average_grade_points = round(total_credit_points / total_credits, 2) if total_credits > 0 else 0.0
+
     marks_with_internal = [float(mark.internal_marks) for mark in marks if mark.internal_marks is not None]
     average_internal = round(sum(marks_with_internal) / len(marks_with_internal), 2) if marks_with_internal else 0.0
     total_backlogs = sum(1 for mark in marks if (mark.grade or '').upper() in {'U', 'FAIL', 'W', 'I'})
@@ -154,14 +195,18 @@ def calculate_analytics(student: models.Student) -> schemas.AnalyticsSummary:
         semester_buckets.setdefault(mark.semester, []).append(mark)
     semester_performance = []
     for semester, semester_marks in sorted(semester_buckets.items()):
-        semester_grades = [GRADE_POINTS.get(mark.grade, 0) for mark in semester_marks if mark.grade]
+        sem_graded_marks = [mark for mark in semester_marks if mark.grade and str(mark.grade).strip() and mark.subject and CURRICULUM_CREDITS.get(mark.subject.course_code, 0) > 0]
+        sem_credit_points = sum(CURRICULUM_CREDITS.get(mark.subject.course_code, 0) * GRADE_POINTS.get(mark.grade, 0) for mark in sem_graded_marks if mark.subject)
+        sem_credits = sum(CURRICULUM_CREDITS.get(mark.subject.course_code, 0) for mark in sem_graded_marks if mark.subject)
+        sem_sgpa = round(sem_credit_points / sem_credits, 2) if sem_credits > 0 else 0.0
+
         semester_internals = [float(mark.internal_marks) for mark in semester_marks if mark.internal_marks is not None]
         semester_performance.append(
             schemas.SemesterPerformanceItem(
                 semester=semester,
                 subject_count=len(semester_marks),
                 average_internal=round(sum(semester_internals) / len(semester_internals), 2) if semester_internals else 0.0,
-                average_grade_points=round(sum(semester_grades) / len(semester_grades), 2) if semester_grades else 0.0,
+                average_grade_points=sem_sgpa,
                 backlog_count=sum(1 for mark in semester_marks if (mark.grade or '').upper() in {'U', 'FAIL', 'W', 'I'}),
             )
         )
@@ -246,8 +291,12 @@ def build_admin_student_snapshot(student: models.Student) -> schemas.AdminStuden
 
 
 def _admin_directory_query():
-    return text('''
-        with rollups as (
+    credits_cte_values = ", ".join(f"('{code}', {credit})" for code, credit in CURRICULUM_CREDITS.items())
+    
+    return text(f'''
+        with curriculum_credits_map as (
+            select * from (values {credits_cte_values}) as t(course_code, credit)
+        ), rollups as (
             select distinct roll_no from students
             union select distinct roll_no from contact_info
             union select distinct roll_no from family_details
@@ -256,13 +305,30 @@ def _admin_directory_query():
             union select distinct roll_no from internal_marks
             union select distinct roll_no from counselor_diary
             union select distinct roll_no from extra_curricular
+        ), grade_pts as (
+            select sg.roll_no, sg.internal_marks, sg.grade, coalesce(ccm.credit, 0) as credit,
+                (CASE upper(coalesce(sg.grade, ''))
+                    WHEN 'O' THEN 10 WHEN 'S' THEN 10
+                    WHEN 'A+' THEN 9 WHEN 'A' THEN 8
+                    WHEN 'B+' THEN 7 WHEN 'B' THEN 6
+                    WHEN 'C' THEN 5 WHEN 'D' THEN 4
+                    WHEN 'E' THEN 3 WHEN 'PASS' THEN 5
+                    WHEN 'P' THEN 5 WHEN 'FAIL' THEN 0
+                    WHEN 'F' THEN 0 WHEN 'U' THEN 0
+                    WHEN 'W' THEN 0 WHEN 'I' THEN 0
+                    WHEN 'AB' THEN 0 ELSE NULL
+                END) as grade_point
+            from semester_grades sg
+            left join curriculum_credits_map ccm on sg.subject_code = ccm.course_code
         ), grade_agg as (
             select roll_no,
                    count(*) as marks_count,
-                   avg(coalesce(grade_point, 0)) as average_grade_points,
+                   (case when sum(case when grade_point is not null then credit else 0 end) > 0 
+                         then sum(grade_point * credit) / sum(case when grade_point is not null then credit else 0 end) 
+                         else 0 end) as average_grade_points,
                    avg(coalesce(internal_marks, 0)) as average_internal_percentage,
                    sum(case when upper(coalesce(grade, '')) in ('U', 'FAIL', 'F', 'W', 'I', 'AB') then 1 else 0 end) as backlogs
-            from semester_grades
+            from grade_pts
             group by roll_no
         ), attendance_agg as (
             select s.roll_no,
@@ -286,7 +352,9 @@ def _admin_directory_query():
                coalesce(aa.attendance_percentage, 0) as attendance_percentage,
                coalesce(ga.average_grade_points, 0) as average_grade_points,
                coalesce(ga.average_internal_percentage, 0) as average_internal_percentage,
-               coalesce(ga.backlogs, 0) as backlogs
+               coalesce(ga.backlogs, 0) as backlogs,
+               s.reg_no,
+               rank() over (order by coalesce(ga.average_grade_points, 0) desc) as rank
         from rollups r
         left join students s on s.roll_no = r.roll_no
         left join contact_info ci on ci.roll_no = r.roll_no
@@ -296,8 +364,11 @@ def _admin_directory_query():
     ''')
 
 
-def build_admin_overview(db: Session) -> schemas.AdminOverview:
+def build_admin_overview(db: Session, batch: Optional[str] = None) -> schemas.AdminOverview:
     directory = build_admin_directory(db)
+    if batch and batch.upper() != 'ALL':
+        directory = [d for d in directory if (d.batch or '').upper() == batch.upper()]
+
     users = db.query(models.User).options(joinedload(models.User.role)).all()
     snapshots = [
         schemas.AdminStudentSnapshot(
@@ -309,6 +380,7 @@ def build_admin_overview(db: Session) -> schemas.AdminOverview:
             average_grade_points=item.average_grade_points,
             attendance_percentage=item.attendance_percentage,
             backlogs=item.backlogs,
+            reg_no=item.reg_no,
             is_initial_password=False,
         )
         for item in directory
@@ -420,6 +492,54 @@ def build_directory_insights(directory: list[schemas.AdminDirectoryStudent]) -> 
     )
 
 
+def build_admin_analytics(directory: list[schemas.AdminDirectoryStudent]) -> schemas.AdminAnalyticsResponse:
+    directory_insights = build_directory_insights(directory)
+    risk_breakdown = schemas.AdminRiskBreakdown()
+    attendance_bands = Counter()
+    gpa_bands = Counter()
+
+    for item in directory:
+        if item.attendance_count == 0 and item.marks_count == 0:
+            risk_breakdown.missing_data += 1
+        elif item.backlogs > 1 or item.attendance_percentage < 65 or item.average_grade_points < 5:
+            risk_breakdown.critical += 1
+        elif item.backlogs > 0 or item.attendance_percentage < 75 or item.average_grade_points < 6.5:
+            risk_breakdown.warning += 1
+        else:
+            risk_breakdown.healthy += 1
+
+        if item.attendance_count == 0:
+            attendance_bands['No attendance data'] += 1
+        elif item.attendance_percentage < 75:
+            attendance_bands['Below 75%'] += 1
+        elif item.attendance_percentage < 85:
+            attendance_bands['75% - 84%'] += 1
+        elif item.attendance_percentage < 92:
+            attendance_bands['85% - 91%'] += 1
+        else:
+            attendance_bands['92% and above'] += 1
+
+        if item.marks_count == 0:
+            gpa_bands['No marks data'] += 1
+        elif item.average_grade_points < 6:
+            gpa_bands['Below 6'] += 1
+        elif item.average_grade_points < 7.5:
+            gpa_bands['6 - 7.49'] += 1
+        elif item.average_grade_points < 8.5:
+            gpa_bands['7.5 - 8.49'] += 1
+        else:
+            gpa_bands['8.5 and above'] += 1
+
+    return schemas.AdminAnalyticsResponse(
+        risk_breakdown=risk_breakdown,
+        batch_distribution=[schemas.AdminDirectoryInsightItem(label=item.label, count=item.count) for item in directory_insights.batches],
+        semester_distribution=[schemas.AdminDirectoryInsightItem(label=item.label, count=item.count) for item in directory_insights.semesters],
+        city_distribution=[schemas.AdminDirectoryInsightItem(label=item.label, count=item.count) for item in directory_insights.cities],
+        attendance_bands=[schemas.AdminDirectoryInsightItem(label=label, count=count) for label, count in attendance_bands.items()],
+        gpa_bands=[schemas.AdminDirectoryInsightItem(label=label, count=count) for label, count in gpa_bands.items()],
+    )
+
+
 def build_record_health(
     contact_info,
     family_details,
@@ -463,16 +583,25 @@ def build_academic_snapshot(semester_grades, internal_marks, previous_academics)
             best_grade_point = point
             best_grade = item.get('grade')
 
-    cgpa_proxy_values = [float(item.get('grade_point')) for item in semester_grades if item.get('grade_point') is not None]
-    cgpa_proxy = round(sum(cgpa_proxy_values) / len(cgpa_proxy_values), 2) if cgpa_proxy_values else 0.0
-    semesters_tracked = len({item.get('semester') for item in semester_grades if item.get('semester') is not None})
-    needs_attention = any((item.get('grade') or '').upper() in {'U', 'FAIL', 'W', 'I'} for item in semester_grades)
+    graded_entries = [item for item in semester_grades if item.get('grade') and str(item.get('grade')).strip()]
+    total_credit_points = sum(
+        CURRICULUM_CREDITS.get(item.get('subject_code'), 0) * (item.get('grade_point') or 0)
+        for item in graded_entries if item.get('subject_code') and CURRICULUM_CREDITS.get(item.get('subject_code'), 0) > 0
+    )
+    total_credits = sum(
+        CURRICULUM_CREDITS.get(item.get('subject_code'), 0)
+        for item in graded_entries if item.get('subject_code') and CURRICULUM_CREDITS.get(item.get('subject_code'), 0) > 0
+    )
+    
+    cgpa_proxy = round(total_credit_points / total_credits, 2) if total_credits > 0 else 0.0
+    semesters_tracked = len({item.get('semester') for item in graded_entries if item.get('semester') is not None})
+    needs_attention = any((item.get('grade') or '').upper() in {'U', 'FAIL', 'W', 'I'} for item in graded_entries)
     if not needs_attention:
         needs_attention = any((item.get('percentage') or 0) < 60 for item in internal_marks if item.get('percentage') is not None)
 
     return schemas.StudentAcademicSnapshot(
         semesters_tracked=semesters_tracked,
-        grade_entries=len(semester_grades),
+        grade_entries=len(graded_entries),
         internal_tests=len(internal_marks),
         previous_qualifications=len(previous_academics),
         cgpa_proxy=cgpa_proxy,
@@ -519,7 +648,17 @@ def build_full_student_record(roll_no: str, db: Session) -> schemas.FullStudentR
     semester_grades = fetch_many('''
         select semester::int as semester, subject_code, subject_title, grade,
                marks::float as marks, internal_marks::float as internal_marks, attempt, remarks,
-               grade_point::float as grade_point
+               (CASE upper(coalesce(grade, ''))
+                   WHEN 'O' THEN 10 WHEN 'S' THEN 10
+                   WHEN 'A+' THEN 9 WHEN 'A' THEN 8
+                   WHEN 'B+' THEN 7 WHEN 'B' THEN 6
+                   WHEN 'C' THEN 5 WHEN 'D' THEN 4
+                   WHEN 'E' THEN 3 WHEN 'PASS' THEN 5
+                   WHEN 'P' THEN 5 WHEN 'FAIL' THEN 0
+                   WHEN 'F' THEN 0 WHEN 'U' THEN 0
+                   WHEN 'W' THEN 0 WHEN 'I' THEN 0
+                   WHEN 'AB' THEN 0 ELSE 0
+               END)::float as grade_point
         from semester_grades where roll_no = :roll_no order by semester, subject_code
     ''')
     internal_marks = fetch_many('''
@@ -546,13 +685,23 @@ def build_full_student_record(roll_no: str, db: Session) -> schemas.FullStudentR
 def build_admin_student_credential(roll_no: str, db: Session) -> schemas.AdminStudentCredential:
     student = db.query(models.Student).options(joinedload(models.Student.user)).filter(models.Student.roll_no == roll_no).first()
     if not student or not student.user:
-        raise HTTPException(status_code=404, detail='Student credentials not found')
+        directory_student = build_admin_directory_student(roll_no, db)
+        if not directory_student:
+            raise HTTPException(status_code=404, detail='Student credentials not found')
+        return schemas.AdminStudentCredential(
+            roll_no=roll_no,
+            username=roll_no,
+            has_account=False,
+            is_initial_password=False,
+            note='No application account is provisioned for this directory record yet.',
+        )
 
     dob_masked = student.dob.strftime('%d/%m/%Y') if student.dob else None
     initial_password_hint = student.dob.strftime('%d%m%Y') if student.dob and student.user.is_initial_password else None
     return schemas.AdminStudentCredential(
         roll_no=student.roll_no,
         username=student.user.username,
+        has_account=True,
         is_initial_password=student.user.is_initial_password,
         initial_password_hint=initial_password_hint,
         dob_masked=dob_masked,
@@ -575,6 +724,7 @@ async def root():
             'admin_overview': '/admin/overview',
             'admin_directory': '/admin/students',
             'admin_directory_insights': '/admin/directory-insights',
+            'admin_analytics': '/admin/analytics',
             'admin_full_record': '/admin/student-record/{roll_no}',
             'admin_student_credentials': '/admin/student-credentials/{roll_no}',
             'admin_import_snapshots': '/admin/import-snapshots',
@@ -661,9 +811,13 @@ async def get_student_analytics(roll_no: str, db: Session = Depends(get_db), cur
 
 
 @app.get('/admin/overview', response_model=schemas.AdminOverview)
-async def get_admin_overview(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+async def get_admin_overview(
+    current_user: models.User = Depends(auth.get_current_user), 
+    db: Session = Depends(get_db),
+    batch: Optional[str] = Query(default=None)
+):
     require_admin(current_user)
-    return build_admin_overview(db)
+    return build_admin_overview(db, batch)
 
 
 @app.get('/admin/directory-insights', response_model=schemas.AdminDirectoryInsights)
@@ -671,6 +825,13 @@ async def get_admin_directory_insights(current_user: models.User = Depends(auth.
     require_admin(current_user)
     directory = build_admin_directory(db)
     return build_directory_insights(directory)
+
+
+@app.get('/admin/analytics', response_model=schemas.AdminAnalyticsResponse)
+async def get_admin_analytics(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    require_admin(current_user)
+    directory = build_admin_directory(db)
+    return build_admin_analytics(directory)
 
 
 @app.get('/admin/students', response_model=list[schemas.AdminDirectoryStudent])
@@ -682,13 +843,79 @@ async def get_admin_students(
     batch: str = '',
     semester: Optional[int] = Query(default=None),
     risk_only: bool = False,
-    sort_by: str = Query(default='roll_no', pattern='^(roll_no|name|city|batch|semester|gpa|internal)$'),
+    sort_by: str = Query(default='roll_no', pattern='^(roll_no|name|city|batch|semester|gpa|internal|attendance|rank)$'),
     sort_dir: str = Query(default='desc', pattern='^(asc|desc)$'),
     limit: int = Query(default=200, ge=1, le=500),
 ):
     require_admin(current_user)
     directory = build_admin_directory(db)
     return filter_admin_directory(directory, search, city, batch, semester, risk_only, sort_by, sort_dir, limit)
+
+
+@app.put('/admin/students/{roll_no}', response_model=schemas.MessageResponse)
+async def update_admin_student(roll_no: str, payload: dict, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    require_admin(current_user)
+    student = db.query(models.Student).filter(models.Student.roll_no == roll_no).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    student.name = payload.get("name", student.name)
+    student.email = payload.get("email", student.email)
+    student.batch = payload.get("batch", student.batch)
+    if payload.get("current_semester") is not None:
+        student.current_semester = payload.get("current_semester")
+    
+    db.execute(text('''
+        UPDATE contact_info SET 
+            city = :city,
+            phone_primary = :phone,
+            email = :email
+        WHERE roll_no = :roll_no
+    '''), {
+        "city": payload.get("city"),
+        "phone": payload.get("phone_primary"),
+        "email": payload.get("email"),
+        "roll_no": roll_no
+    })
+
+    db.commit()
+    return schemas.MessageResponse(message="Student updated successfully")
+
+
+@app.delete('/admin/students/{roll_no}', response_model=schemas.MessageResponse)
+async def delete_admin_student(roll_no: str, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    require_admin(current_user)
+    student = db.query(models.Student).filter(models.Student.roll_no == roll_no).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    user_to_delete = student.user
+    
+    # Delete related records from raw tables
+    tables = ['contact_info', 'family_details', 'previous_academics', 'semester_grades', 'internal_marks', 'counselor_diary', 'extra_curricular']
+    for table in tables:
+        db.execute(text(f"DELETE FROM {table} WHERE roll_no = :roll"), {"roll": roll_no})
+        
+    # Delete from modeled tables
+    db.execute(text("DELETE FROM attendance WHERE student_id = :sid"), {"sid": student.id})
+    db.execute(text("DELETE FROM student_marks WHERE student_id = :sid"), {"sid": student.id})
+    
+    db.delete(student)
+    
+    # Safeguard: Only delete the user account if it belongs to a 'student' role
+    if user_to_delete:
+        is_protected = False
+        if user_to_delete.role and user_to_delete.role.name in ['admin', 'staff']:
+            is_protected = True
+        
+        if not is_protected:
+            db.delete(user_to_delete)
+        else:
+            # If it's an admin/staff, we keep the user but they no longer have a student profile
+            print(f"Protected user {user_to_delete.username} from deletion during student removal.")
+        
+    db.commit()
+    return schemas.MessageResponse(message="Student deleted successfully")
 
 
 @app.get('/admin/student-record/{roll_no}', response_model=schemas.FullStudentRecord)

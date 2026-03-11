@@ -1657,20 +1657,20 @@
                     {
                         "SlNo": "1",
                         "Date": "26-11-2025",
-                        "Subject": "ADVANCED DATABASE TECHNOLOGY",
-                        "Marks": "74"
-                    },
-                    {
-                        "SlNo": "2",
-                        "Date": "26-11-2025",
                         "Subject": "OBJECT ORIENTED SOFTWARE ENGINEERING",
                         "Marks": "-- A --"
                     },
                     {
-                        "SlNo": "3",
+                        "SlNo": "2",
                         "Date": "26-11-2025",
                         "Subject": "PROBABILITY AND STATISTICS",
                         "Marks": "78"
+                    },
+                    {
+                        "SlNo": "3",
+                        "Date": "26-11-2025",
+                        "Subject": "ADVANCED DATABASE TECHNOLOGY",
+                        "Marks": "74"
                     },
                     {
                         "SlNo": "4",

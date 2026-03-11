@@ -14,6 +14,9 @@ import {
   YAxis,
 } from 'recharts';
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Award,
   Book,
   Calendar,
@@ -53,6 +56,22 @@ const gradePoints = {
   PASS: 5,
 };
 
+const SortHeader = ({ label, field, currentSort, currentDir, onSort }) => {
+  const isActive = currentSort === field;
+  return (
+    <th onClick={() => onSort(field)} style={{ cursor: 'pointer', userSelect: 'none', padding: '0.75rem 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        {label}
+        {isActive ? (
+          currentDir === 'asc' ? <ArrowUp size={14} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={14} style={{ color: 'var(--primary)' }} />
+        ) : (
+          <ArrowUpDown size={14} style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
+        )}
+      </div>
+    </th>
+  );
+};
+
 const Dashboard = ({ user, onLogout, onUserUpdate }) => {
   const [data, setData] = useState(null);
   const [analytics, setAnalytics] = useState(null);
@@ -79,6 +98,10 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
     new_password: '',
     confirm_password: '',
   });
+  const [sortBy, setSortBy] = useState('semester');
+  const [sortDir, setSortDir] = useState('desc');
+  const [semFilter, setSemFilter] = useState('ALL');
+  const [assessmentFilter, setAssessmentFilter] = useState('ALL');
 
   const rollNo = user?.roll_no || user?.username;
 
@@ -247,8 +270,29 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
     const subjectName = mark.subject?.name || '';
     const matchesSearch = `${courseCode} ${subjectName}`.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesGrade = gradeFilter === 'ALL' || mark.grade === gradeFilter;
-    return matchesSearch && matchesGrade;
-  }), [marks, searchTerm, gradeFilter]);
+    const matchesSem = semFilter === 'ALL' || String(mark.semester) === semFilter;
+    return matchesSearch && matchesGrade && matchesSem;
+  }), [marks, searchTerm, gradeFilter, semFilter]);
+
+  const sortedMarks = useMemo(() => {
+    const fieldMap = {
+      code: (m) => m.subject?.course_code || '',
+      subject: (m) => (m.subject?.name || '').toLowerCase(),
+      semester: (m) => m.semester || 0,
+      grade: (m) => m.grade || '',
+      internal: (m) => m.internal_marks || 0,
+      total: (m) => m.total_marks || 0,
+    };
+    const getter = fieldMap[sortBy] || fieldMap.semester;
+    const sorted = [...filteredMarks].sort((a, b) => {
+      const valA = getter(a);
+      const valB = getter(b);
+      if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+      if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [filteredMarks, sortBy, sortDir]);
 
   const chartData = filteredMarks.map((mark) => ({
     name: mark.subject?.course_code || `Sem ${mark.semester}`,
@@ -290,9 +334,12 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
             <UserIcon color="white" size={26} />
           </div>
           <div>
-            <h1 style={{ fontSize: '1.65rem' }}>{profile?.name || data?.name || 'Student'}</h1>
+            <h1 style={{ fontSize: '1.65rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              {profile?.name || data?.name || 'Student'}
+              {profile?.rank && <span style={{ fontSize: '0.9rem', padding: '0.2rem 0.6rem', borderRadius: '20px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)' }}>Rank #{profile.rank}</span>}
+            </h1>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-              Roll: {rollNo} | {profile?.program_name || 'Program unavailable'} | {profile?.batch || data?.batch || 'Batch unavailable'}
+              Roll: {rollNo} | {profile?.reg_no ? `Reg: ${profile.reg_no} | ` : ''} {profile?.program_name || 'Program unavailable'} | {profile?.batch || data?.batch || 'Batch unavailable'}
             </p>
           </div>
         </div>
@@ -404,9 +451,21 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
                 </div>
                 <select className="input-field" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}>
                   <option value="ALL">All grades</option>
-                  {[...new Set(marks.map((mark) => mark.grade).filter(Boolean))].map((grade) => (
+                  {[...new Set(marks.map((mark) => mark.grade).filter(Boolean))].sort().map((grade) => (
                     <option key={grade} value={grade}>{grade}</option>
                   ))}
+                </select>
+                <select className="input-field" value={semFilter} onChange={(e) => setSemFilter(e.target.value)}>
+                  <option value="ALL">All Semesters</option>
+                  {[...new Set(marks.map((mark) => String(mark.semester)))].sort().map((sem) => (
+                    <option key={sem} value={sem}>Sem {sem}</option>
+                  ))}
+                </select>
+                <select className="input-field" value={assessmentFilter} onChange={(e) => setAssessmentFilter(e.target.value)}>
+                  <option value="ALL">All Marks</option>
+                  <option value="CIT1">CIT 1</option>
+                  <option value="CIT2">CIT 2</option>
+                  <option value="CIT3">CIT 3</option>
                 </select>
               </div>
             </div>
@@ -414,22 +473,26 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '0.75rem 0' }}>Code</th>
-                    <th style={{ padding: '0.75rem 0' }}>Subject</th>
-                    <th style={{ padding: '0.75rem 0' }}>Semester</th>
-                    <th style={{ padding: '0.75rem 0' }}>Grade</th>
-                    <th style={{ padding: '0.75rem 0' }}>Internal</th>
-                    <th style={{ padding: '0.75rem 0' }}>Total</th>
+                    <SortHeader label="Code" field="code" currentSort={sortBy} currentDir={sortDir} onSort={(f) => { setSortDir(sortBy === f ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc'); setSortBy(f); }} />
+                    <SortHeader label="Subject" field="subject" currentSort={sortBy} currentDir={sortDir} onSort={(f) => { setSortDir(sortBy === f ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc'); setSortBy(f); }} />
+                    <SortHeader label="Semester" field="semester" currentSort={sortBy} currentDir={sortDir} onSort={(f) => { setSortDir(sortBy === f ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc'); setSortBy(f); }} />
+                    <SortHeader label="Grade" field="grade" currentSort={sortBy} currentDir={sortDir} onSort={(f) => { setSortDir(sortBy === f ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc'); setSortBy(f); }} />
+                    <SortHeader label={assessmentFilter === 'ALL' ? 'Internal' : assessmentFilter} field="internal" currentSort={sortBy} currentDir={sortDir} onSort={(f) => { setSortDir(sortBy === f ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc'); setSortBy(f); }} />
+                    <SortHeader label="Total" field="total" currentSort={sortBy} currentDir={sortDir} onSort={(f) => { setSortDir(sortBy === f ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc'); setSortBy(f); }} />
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredMarks.map((mark) => (
+                  {sortedMarks.map((mark) => (
                     <tr key={mark.id} style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                       <td style={{ padding: '0.85rem 0' }}>{mark.subject?.course_code || '-'}</td>
                       <td style={{ padding: '0.85rem 0' }}>{mark.subject?.name || '-'}</td>
                       <td style={{ padding: '0.85rem 0' }}>{mark.semester}</td>
                       <td style={{ padding: '0.85rem 0' }}>{mark.grade || '-'}</td>
-                      <td style={{ padding: '0.85rem 0' }}>{mark.internal_marks ?? '-'}</td>
+                      <td style={{ padding: '0.85rem 0' }}>
+                        {assessmentFilter === 'ALL' 
+                          ? (mark.internal_marks ?? '-') 
+                          : (assessmentFilter === 'CIT1' ? mark.cit1_marks : (assessmentFilter === 'CIT2' ? mark.cit2_marks : mark.cit3_marks)) ?? '-'}
+                      </td>
                       <td style={{ padding: '0.85rem 0' }}>{mark.total_marks ?? '-'}</td>
                     </tr>
                   ))}

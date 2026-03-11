@@ -5,7 +5,7 @@ import os
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql://avnadmin:AVNS_EDm2HpaxXEaH-sggyHi@pg-acb89ae-spark-db.a.aivencloud.com:24087/defaultdb?sslmode=require"
+    DATABASE_URL: str = "postgresql://avnadmin:AVNS_Po7l5FxNwlEiEMRM-ha@pg-22fd1f-spark-db.b.aivencloud.com:24087/defaultdb?sslmode=require"
     SECRET_KEY: str = "maybedemo"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30

@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -33,6 +34,34 @@ script_get_parent_portal_info = _load_script_scraper()
 
 
 class PortalScraper:
+    # Official R2024 MCA Curriculum Mapping
+    MCA_R2024_CURRICULUM = {
+        # Semester 1
+        "PROBABILITY AND STATISTICS": {"code": "24FC101", "sem": 1, "credits": 4},
+        "ADVANCED DATABASE TECHNOLOGY": {"code": "24MC102", "sem": 1, "credits": 3},
+        "PYTHON PROGRAMMING": {"code": "24MC103", "sem": 1, "credits": 3},
+        "OBJECT ORIENTED SOFTWARE ENGINEERING": {"code": "24MC104", "sem": 1, "credits": 3},
+        "MODERN OPERATING SYSTEMS": {"code": "24MC105", "sem": 1, "credits": 3},
+        "RESEARCH METHODOLOGY AND IPR": {"code": "24RM101", "sem": 1, "credits": 3},
+        "PYTHON PROGRAMMING LABORATORY": {"code": "24MC1L1", "sem": 1, "credits": 1.5},
+        "ADVANCED DATABASE TECHNOLOGY LABORATORY": {"code": "24MC1L2", "sem": 1, "credits": 1.5},
+        "COMMUNICATION SKILLS LABORATORY - I": {"code": "24MC1L3", "sem": 1, "credits": 1},
+        "STRESS MANAGEMENT BY YOGA": {"code": "24AC107", "sem": 1, "credits": 0},
+        
+        # Semester 2
+        "INTERNET OF THINGS": {"code": "24MC201", "sem": 2, "credits": 3},
+        "DATA STRUCTURES AND ALGORITHMS": {"code": "24MC202", "sem": 2, "credits": 4},
+        "MACHINE LEARNING": {"code": "24MC203", "sem": 2, "credits": 3},
+        "ADVANCED JAVA": {"code": "24MC204", "sem": 2, "credits": 4},
+        "MOBILE COMPUTING": {"code": "24MC2E2", "sem": 2, "credits": 3},
+        "OPERATION RESEARCH": {"code": "24MC2E6", "sem": 2, "credits": 3},
+        "OPERATIONS RESEARCH": {"code": "24MC2E6", "sem": 2, "credits": 3},
+        "DATA STRUCTURES AND ALGORITHMS LABORATORY": {"code": "24MC2L1", "sem": 2, "credits": 2},
+        "ADVANCED JAVA LABORATORY": {"code": "24MC2L2", "sem": 2, "credits": 2},
+        "MACHINE LEARNING LABORATORY": {"code": "24MC2L3", "sem": 2, "credits": 2},
+        "COMMUNICATION SKILLS LABORATORY - II": {"code": "24MC2L4", "sem": 2, "credits": 1},
+    }
+
     def __init__(self):
         self.snapshot_dir = DATA_DIR
 
@@ -98,20 +127,47 @@ class PortalScraper:
             db.flush()
         return subject
 
-    def _find_subject_by_name(self, subject_name, db: Session):
-        normalized = re.sub(r'\s+', ' ', subject_name).strip().lower()
+    def _find_subject_by_name(self, subject_name, db: Session, semester=None):
+        normalized = re.sub(r'\s+', ' ', subject_name).strip().upper()
+        
+        # 1. Exact Match in DB
         subjects = db.query(models.Subject).all()
-        for subject in subjects:
-            if subject.name and normalized == re.sub(r'\s+', ' ', subject.name).strip().lower():
-                return subject
-        for subject in subjects:
-            if subject.name and normalized in re.sub(r'\s+', ' ', subject.name).strip().lower():
-                return subject
+        for s in subjects:
+            if s.name and normalized == re.sub(r'\s+', ' ', s.name).strip().upper():
+                return s
+        
+        # 2. Curriculum Mapping check
+        if normalized in self.MCA_R2024_CURRICULUM:
+            info = self.MCA_R2024_CURRICULUM[normalized]
+            subject = db.query(models.Subject).filter(models.Subject.course_code == info['code']).first()
+            if not subject:
+                subject = models.Subject(
+                    course_code=info['code'],
+                    name=normalized,
+                    credits=info['credits'],
+                    semester=info['sem'] or semester
+                )
+                db.add(subject)
+                db.flush()
+            return subject
+
+        # 3. Partial Match in DB
+        for s in subjects:
+            if s.name and normalized in re.sub(r'\s+', ' ', s.name).strip().upper():
+                return s
         return None
 
     def _sync_student_record(self, roll_no, dob, info, db: Session):
         student = db.query(models.Student).filter(models.Student.roll_no == roll_no).first()
         user = db.query(models.User).filter(models.User.username == roll_no).first()
+        
+        # Safeguard: If the existing user is an admin/staff, we MUST NOT link the student profile to them.
+        # We'll create a new student-specific user instead if the IDs don't match correctly.
+        if user and user.role and user.role.name in ['admin', 'staff']:
+            print(f"Warning: Found existing {user.role.name} user with username {roll_no}. Creating separate student account.")
+            # We'll use a prefix or different strategy if roll_no conflicts with admin/staff usernames
+            user = db.query(models.User).filter(models.User.username == f"stu_{roll_no}").first()
+
         if not user:
             student_role = self._get_student_role(db)
             if not student_role:
@@ -119,8 +175,15 @@ class PortalScraper:
             initial_password = self._normalize_dob_password(dob)
             if not initial_password:
                 raise ValueError(f'Unable to derive initial password from DOB for {roll_no}')
+            
+            # Use original roll_no unless it conflicts with a non-student user
+            target_username = roll_no
+            potential_conflict = db.query(models.User).filter(models.User.username == target_username).first()
+            if potential_conflict:
+                target_username = f"stu_{roll_no}"
+
             user = models.User(
-                username=roll_no,
+                username=target_username,
                 password_hash=auth.get_password_hash(initial_password),
                 role_id=student_role.id,
                 is_initial_password=True,
@@ -130,7 +193,7 @@ class PortalScraper:
                 db.flush()
             except IntegrityError:
                 db.rollback()
-                user = db.query(models.User).filter(models.User.username == roll_no).first()
+                user = db.query(models.User).filter(models.User.username == target_username).first()
                 if not user:
                     raise
 
@@ -165,9 +228,39 @@ class PortalScraper:
         if not student:
             return
 
+        # Clear existing raw SQL marks for this student to avoid duplicates during resync
+        db.execute(text("DELETE FROM semester_grades WHERE roll_no = :r"), {'r': student.roll_no})
+        db.execute(text("DELETE FROM internal_marks WHERE roll_no = :r"), {'r': student.roll_no})
+
+        merged_grades = {} # subject_code -> {semester, subject_title, grade, internal, marks}
+
+        # 1. Process Parent Portal Marks
         for mark in marks:
-            semester = int(mark['Sem']) if str(mark.get('Sem', '')).isdigit() else 0
-            subject = self._get_or_create_subject(mark['Subject'], semester, db)
+            sem_val = str(mark.get('Sem', '0')).strip()
+            semester = int(sem_val) if sem_val.isdigit() else 0
+            subject_str = mark.get('Subject', '')
+            
+            # Fix parsing: "Code - Name - More" -> code="Code", name="Name - More"
+            parts = subject_str.split(' - ')
+            subject_code = parts[0].strip() if parts else subject_str
+            subject_name = ' - '.join(parts[1:]).strip() if len(parts) > 1 else subject_str
+            
+            grade = self._normalize_grade(mark.get('Grade'))
+            
+            if subject_code not in merged_grades:
+                merged_grades[subject_code] = {
+                    'semester': semester,
+                    'subject_title': subject_name,
+                    'grade': grade,
+                    'internal_marks': None,
+                    'marks': None
+                }
+            else:
+                if grade and grade != 'U':
+                    merged_grades[subject_code]['grade'] = grade
+
+            # Also update ORM models.Subject and models.StudentMark
+            subject = self._get_or_create_subject(subject_str, semester, db)
             entry = db.query(models.StudentMark).filter(
                 models.StudentMark.student_id == student.id,
                 models.StudentMark.subject_id == subject.id,
@@ -176,21 +269,42 @@ class PortalScraper:
             if not entry:
                 entry = models.StudentMark(student_id=student.id, subject_id=subject.id, semester=semester)
                 db.add(entry)
-            entry.grade = self._normalize_grade(mark.get('Grade'))
+            entry.grade = grade
+            db.flush()
 
+        # 2. Process University Marks (overwrite/refine grades)
         for item in university_marks:
-            semester = int(item['Semester']) if str(item.get('Semester', '')).isdigit() else 0
-            subject = db.query(models.Subject).filter(models.Subject.course_code == item['PaperCode']).first()
+            sem_val = str(item.get('Semester', '0')).strip()
+            semester = int(sem_val) if sem_val.isdigit() else 0
+            subject_code = item['PaperCode']
+            subject_name = item['PaperName']
+            grade = self._normalize_grade(item.get('Grade'))
+            
+            if subject_code not in merged_grades:
+                merged_grades[subject_code] = {
+                    'semester': semester,
+                    'subject_title': subject_name,
+                    'grade': grade,
+                    'internal_marks': None,
+                    'marks': None
+                }
+            else:
+                if grade and grade != 'U':
+                    merged_grades[subject_code]['grade'] = grade
+
+            # ORM Update
+            subject = db.query(models.Subject).filter(models.Subject.course_code == subject_code).first()
             if not subject:
                 credit = item.get('Credit', '0')
                 subject = models.Subject(
-                    course_code=item['PaperCode'],
-                    name=item['PaperName'],
+                    course_code=subject_code,
+                    name=subject_name,
                     credits=int(float(credit)) if str(credit).replace('.', '', 1).isdigit() else 0,
                     semester=semester,
                 )
                 db.add(subject)
                 db.flush()
+            
             entry = db.query(models.StudentMark).filter(
                 models.StudentMark.student_id == student.id,
                 models.StudentMark.subject_id == subject.id,
@@ -199,22 +313,67 @@ class PortalScraper:
             if not entry:
                 entry = models.StudentMark(student_id=student.id, subject_id=subject.id, semester=semester)
                 db.add(entry)
-            entry.grade = self._normalize_grade(item.get('Grade')) or entry.grade
+            if grade:
+                entry.grade = grade
+            db.flush()
 
+        # 3. Process CIT Marks (Internal Percentage)
         test_field_map = {'Test_1': 'cit1_marks', 'Test_2': 'cit2_marks', 'Test_3': 'cit3_marks'}
         for semester_key, tests in cit_marks.items():
             semester_match = re.search(r'(\d+)$', semester_key)
             semester = int(semester_match.group(1)) if semester_match else 0
             for test_name, entries in tests.items():
                 field_name = test_field_map.get(test_name)
+                test_num = int(test_name.split('_')[1]) if '_' in test_name else 1
                 if not field_name:
                     continue
                 for item in entries:
                     if 'Subject' not in item or 'Marks' not in item:
                         continue
-                    subject = self._find_subject_by_name(item['Subject'], db)
+                    subject = self._find_subject_by_name(item['Subject'], db, semester=semester)
                     if not subject:
+                        # Fallback for truly unknown subjects
+                        clean_name = re.sub(r'[^A-Z\s]', '', item['Subject'].upper()).strip()
+                        code = f"CIT_{clean_name[:10].replace(' ', '_')}"
+                        subject = models.Subject(course_code=code, name=item['Subject'], credits=0, semester=semester)
+                        db.add(subject)
+                        db.flush()
+
+                    code = subject.course_code
+                    raw_val = item.get('Marks')
+                    if raw_val is None or str(raw_val).strip() == '':
                         continue
+                        
+                    try:
+                        if str(raw_val).strip() == "-- A --":
+                            mark_val = -1.0
+                        else:
+                            mark_val = round(float(raw_val), 2)
+                    except (ValueError, TypeError):
+                        continue
+                    
+                    # Update local merge dict ONLY if the subject already exists from official tabs
+                    # This prevents CIT marks from appearing in the official Transcript as 0 GPA entries
+                    if code in merged_grades:
+                        pass # Valid, will update internal_marks later
+                    else:
+                        # We don't add to merged_grades (Transcript source) if it's just a CIT record
+                        pass
+                    
+                    # Store specifically for internal_marks table
+                    db.execute(text("""
+                        INSERT INTO internal_marks (roll_no, semester, test_number, subject_code, subject_title, percentage)
+                        VALUES (:r, :sem, :test, :code, :title, :p)
+                        ON CONFLICT DO NOTHING
+                    """), {
+                        'r': student.roll_no,
+                        'sem': semester,
+                        'test': test_num,
+                        'code': code,
+                        'title': subject.name,
+                        'p': mark_val
+                    })
+# ORM Update
                     entry = db.query(models.StudentMark).filter(
                         models.StudentMark.student_id == student.id,
                         models.StudentMark.subject_id == subject.id,
@@ -223,19 +382,50 @@ class PortalScraper:
                     if not entry:
                         entry = models.StudentMark(student_id=student.id, subject_id=subject.id, semester=semester)
                         db.add(entry)
-                    try:
-                        setattr(entry, field_name, float(item['Marks']))
-                    except (TypeError, ValueError):
-                        continue
-                    values = [entry.cit1_marks, entry.cit2_marks, entry.cit3_marks]
-                    numeric_values = [float(value) for value in values if value is not None]
-                    if numeric_values:
-                        entry.internal_marks = sum(numeric_values) / len(numeric_values)
+                    if mark_val is not None:
+                        setattr(entry, field_name, mark_val)
+                        db.flush()
+                        
+                        # Recalculate internal average (ignore -1/Absent for math average, but keep for record)
+                        vals = [entry.cit1_marks, entry.cit2_marks, entry.cit3_marks]
+                        nums = [float(v) for v in vals if v is not None and float(v) >= 0]
+                        if nums:
+                            entry.internal_marks = round(sum(nums) / len(nums), 2)
+                        if code in merged_grades:
+                            merged_grades[code]['internal_marks'] = entry.internal_marks
+                        elif any(v is not None and float(v) == -1 for v in vals):
+                            # If all are absent or mix of absent and none, we can leave internal_marks as None or explicitly 0?
+                            # Standard practice usually treats absent as 0 in final calc, but let's keep internal_marks as None 
+                            # if no valid numeric scores exist yet.
+                            pass
+
+        # 4. Final Final Batch Insert into semester_grades
+        for code, data in merged_grades.items():
+            db.execute(text("""
+                INSERT INTO semester_grades (roll_no, semester, subject_code, subject_title, grade, internal_marks, attempt, remarks)
+                VALUES (:r, :sem, :sc, :st, :g, :i, 1, 'Synced')
+            """), {
+                'r': student.roll_no, 'sem': data['semester'], 'sc': code, 
+                'st': data['subject_title'], 'g': data['grade'], 
+                'i': round(data['internal_marks'], 2) if data['internal_marks'] is not None else None
+            })
 
     def _sync_attendance_to_db(self, student, detailed_attendance, db: Session):
         if not student:
             return
-        for _, days in detailed_attendance.items():
+            
+        # Clear existing summary to avoid duplicates during resync
+        db.execute(text("DELETE FROM attendance_summary WHERE roll_no = :r"), {'r': student.roll_no})
+
+        semester_agg = {}
+
+        for sem_key, days in detailed_attendance.items():
+            semester_match = re.search(r'(\d+)$', sem_key)
+            semester = int(semester_match.group(1)) if semester_match else 1
+            
+            if semester not in semester_agg:
+                semester_agg[semester] = {'present': 0, 'absent': 0, 'leave': 0}
+
             for day in days:
                 try:
                     att_date = datetime.strptime(day['Date'], '%d-%m-%Y').date()
@@ -249,6 +439,15 @@ class PortalScraper:
                 hours_per_day = int(day.get('HoursPerDay', 0)) if str(day.get('HoursPerDay', '')).isdigit() else len(status_array)
                 total_present = sum(1 for status in status_array if status.upper() in {'P', 'OD'})
                 total_hours = hours_per_day
+                
+                # Simple logic for summary: if total_present < total_hours, mark as partial/absent
+                if total_present == total_hours:
+                    semester_agg[semester]['present'] += 1
+                elif total_present == 0:
+                    semester_agg[semester]['absent'] += 1
+                else:
+                    semester_agg[semester]['leave'] += 1 # Or mark as leave if anything else
+
                 if existing:
                     existing.hours_per_day = hours_per_day
                     existing.status_array = status_array
@@ -263,6 +462,16 @@ class PortalScraper:
                         total_present=total_present,
                         total_hours=total_hours,
                     ))
+        
+        # Sync to raw SQL attendance_summary
+        for semester, counts in semester_agg.items():
+            db.execute(text("""
+                INSERT INTO attendance_summary (roll_no, semester, present_days, absent_days, leave_days)
+                VALUES (:r, :sem, :p, :a, :l)
+            """), {
+                'r': student.roll_no, 'sem': semester, 
+                'p': counts['present'], 'a': counts['absent'], 'l': counts['leave']
+            })
 
     def _flatten_cit_marks(self, cit_marks):
         return [
@@ -311,6 +520,7 @@ class PortalScraper:
                 **info,
                 'Name': info.get('Name') or student_info.get('Name'),
                 'RollNo': info.get('RollNo') or student_info.get('Roll No') or roll_no,
+                'RegNo': info.get('RegNo') or student_info.get('RegNo'),
                 'Email': student_info.get('Email address'),
             }
         marks = parent.get('Marks') or []

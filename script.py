@@ -19,9 +19,7 @@ BACKEND_TOKEN = os.environ.get('BACKEND_TOKEN', None)
 
 def parse_student_info_string(info_str):
     """
-    Parses a string like:
-    'KAVIYA  G(248307)           # Reg. No. 910624301025          # Department : MCA          # Batch : 2024 - 2026'
-    into separate components.
+
     """
     details = {
         "Name": "N/A",
@@ -37,7 +35,6 @@ def parse_student_info_string(info_str):
     # Split by '#'
     parts = [p.strip() for p in info_str.split('#')]
     
-    # First part contains Name and Roll No: 'KAVIYA  G(248307)'
     if len(parts) > 0:
         first_part = parts[0]
         # Use regex to extract Name and RollNo: Name(RollNo)
@@ -120,8 +117,7 @@ def sync_with_backend(roll_no, data):
     try:
         resp = requests.post(url, json=data, headers=headers)
         if resp.status_code == 401:
-            print(f"Authentication failed for backend sync. Please set BACKEND_TOKEN environment variable.")
-            # We don't want to block multi-threaded execution with input() if possible
+            print(f"Backend sync skipped for {roll_no} (Unauthorized). Authentication token required.")
             return False
         elif resp.status_code >= 400:
             print(f"Backend sync failed for {roll_no}: {resp.status_code} - {resp.text}")
@@ -788,7 +784,7 @@ if __name__ == '__main__':
     # Initial cleanup
     cleanup_old_files()
     
-    csv_file = "40members.csv"
+    csv_file = "60members.csv"
     if not os.path.exists(csv_file):
         print(f"CSV file {csv_file} not found.")
     else:

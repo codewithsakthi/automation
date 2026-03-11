@@ -1657,20 +1657,20 @@
                     {
                         "SlNo": "1",
                         "Date": "26-11-2025",
-                        "Subject": "PROBABILITY AND STATISTICS",
+                        "Subject": "ADVANCED DATABASE TECHNOLOGY",
                         "Marks": "-- A --"
                     },
                     {
                         "SlNo": "2",
                         "Date": "26-11-2025",
-                        "Subject": "ADVANCED DATABASE TECHNOLOGY",
-                        "Marks": "-- A --"
+                        "Subject": "OBJECT ORIENTED SOFTWARE ENGINEERING",
+                        "Marks": "80"
                     },
                     {
                         "SlNo": "3",
                         "Date": "26-11-2025",
-                        "Subject": "OBJECT ORIENTED SOFTWARE ENGINEERING",
-                        "Marks": "80"
+                        "Subject": "PROBABILITY AND STATISTICS",
+                        "Marks": "-- A --"
                     },
                     {
                         "SlNo": "4",
@@ -1681,14 +1681,14 @@
                     {
                         "SlNo": "5",
                         "Date": "28-11-2025",
-                        "Subject": "RESEARCH METHODOLOGY AND IPR",
-                        "Marks": "90"
+                        "Subject": "MODERN OPERATING SYSTEMS",
+                        "Marks": "96"
                     },
                     {
                         "SlNo": "6",
                         "Date": "28-11-2025",
-                        "Subject": "MODERN OPERATING SYSTEMS",
-                        "Marks": "96"
+                        "Subject": "RESEARCH METHODOLOGY AND IPR",
+                        "Marks": "90"
                     },
                     {
                         "Total": "61"

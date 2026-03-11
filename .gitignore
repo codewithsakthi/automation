@@ -1,0 +1,36 @@
+# Data and Secrets
+data/
+backend/data/
+profiles/
+backend/profiles/
+*.csv
+*.json
+!package.json
+!package-lock.json
+!subject_credits.json
+.env
+.env.*
+*.log
+error_log.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+.venv/
+
+# Node
+node_modules/
+dist/
+build/
+.npm/
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.gemini/
