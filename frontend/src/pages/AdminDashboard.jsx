@@ -40,7 +40,7 @@ import {
   Users,
 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'https://sparkbackendvercel.app';
 const GRADE_POINTS = { O: 10, S: 10, 'A+': 9, A: 8, 'B+': 7, B: 6, C: 5, D: 4, E: 3, PASS: 5, P: 5, FAIL: 0, F: 0, U: 0, W: 0, I: 0, AB: 0 };
 const CHART_COLORS = ['#38bdf8', '#6366f1', '#10b981', '#f59e0b', '#ec4899', '#f97316'];
 
@@ -774,7 +774,7 @@ function AdminDashboard({ user, onLogout, onUserUpdate }) {
                 </div>
               </div>
 
-              <div className="table-stage glass-panel" style={{ overflow: 'hidden' }}>
+              <div className="table-stage glass-panel" style={{ overflow: 'auto' }}>
                 <table className="modern-table">
                   <thead>
                     <tr>
