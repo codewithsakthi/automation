@@ -35,6 +35,20 @@ FastAPI backend for the Student Performance Analysis system.
    uvicorn app.main:app --reload
    ```
 
+## Docker
+
+You can also run the backend using Docker:
+
+1. **Build the image**:
+   ```bash
+   docker build -t spark-backend .
+   ```
+
+2. **Run the container**:
+   ```bash
+   docker run -d -p 8000:8000 --env-file .env --name spark-backend spark-backend
+   ```
+
 ## Deployment
 
 This project is configured for deployment on Vercel using `vercel.json`.
