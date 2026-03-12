@@ -5,11 +5,14 @@
   --primary-hover: #4f46e5;
   --secondary: #ec4899;
   --bg-dark: #0f172a;
+  --bg-dark-rgb: 15, 23, 42;
   --card-bg: rgba(30, 41, 59, 0.7);
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   --glass: rgba(255, 255, 255, 0.03);
   --glass-border: rgba(255, 255, 255, 0.1);
+  --surface-soft: rgba(255, 255, 255, 0.045);
+  --surface-strong: rgba(255, 255, 255, 0.08);
   --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
   --admin-panel: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(17, 24, 39, 0.98));
@@ -39,6 +42,8 @@ body {
   line-height: 1.6;
   overflow-x: hidden;
   min-height: 100vh;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
 }
 
 .app-container {
@@ -113,6 +118,7 @@ body {
   align-items: center;
   gap: 0.5rem;
   text-decoration: none;
+  box-shadow: 0 12px 28px rgba(79, 70, 229, 0.2);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -147,6 +153,7 @@ select.input-field {
   color: white;
   outline: none;
   transition: border-color 0.3s;
+  font-size: 16px;
 }
 
 .input-field:focus,
@@ -160,11 +167,26 @@ select.input-field option {
 }
 
 .tab-btn {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
   border: 1px solid var(--glass-border);
   padding: 0.75rem 1rem;
   border-radius: 999px;
   cursor: pointer;
   font-weight: 600;
+  transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+}
+
+.tab-btn:hover {
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.tab-btn.active {
+  background: var(--accent-gradient);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 14px 30px rgba(99, 102, 241, 0.28);
 }
 
 .metric-row {
@@ -189,18 +211,20 @@ select.input-field option {
 /* Mobile Bottom Navigation */
 .mobile-nav {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: var(--bottom-nav-height);
-  background: rgba(15, 23, 42, 0.8);
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  min-height: var(--bottom-nav-height);
+  background: linear-gradient(180deg, rgba(var(--bg-dark-rgb), 0.94), rgba(12, 18, 34, 0.98));
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
   display: none; /* Desktop hidden */
   grid-template-columns: repeat(4, 1fr);
   z-index: 1000;
-  padding: 0 1rem;
+  padding: 0.5rem;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
 }
 
 .mobile-nav-item {
@@ -214,10 +238,19 @@ select.input-field option {
   font-size: 0.7rem;
   font-weight: 500;
   transition: all 0.3s;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  appearance: none;
+  min-width: 0;
+  padding: 0.55rem 0.35rem;
+  cursor: pointer;
 }
 
 .mobile-nav-item.active {
-  color: var(--primary);
+  color: white;
+  background: rgba(99, 102, 241, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(129, 140, 248, 0.22);
 }
 
 .mobile-nav-item svg {
@@ -845,11 +878,24 @@ select.input-field option {
   justify-content: center;
   align-items: center;
   padding: 1.5rem;
+  background:
+    radial-gradient(circle at top, rgba(99, 102, 241, 0.18), transparent 36%),
+    radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.1), transparent 24%);
 }
 
 .auth-card {
   width: min(100%, 420px);
   padding: 2.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 35%);
+  pointer-events: none;
 }
 
 .auth-title {
@@ -892,6 +938,7 @@ select.input-field option {
   width: min(100%, 1440px);
   margin: 0 auto;
   padding: 2rem;
+  padding-bottom: calc(var(--bottom-nav-height) + 2.5rem);
 }
 
 .student-hero {
@@ -902,6 +949,10 @@ select.input-field option {
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
+  position: sticky;
+  top: 1rem;
+  z-index: 5;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.82));
 }
 
 .student-hero-main {
@@ -965,6 +1016,7 @@ select.input-field option {
 
 .student-table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .student-analytics-grid {
@@ -1024,14 +1076,24 @@ select.input-field option {
   gap: 0.75rem;
   padding-bottom: 0.5rem;
   margin-bottom: 1.5rem;
-}
-
-.tab-btn.active {
-  background: var(--accent-gradient);
+  scroll-padding-inline: 0.35rem;
 }
 
 .kpi-card {
   padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::after {
+  content: '';
+  position: absolute;
+  right: -24px;
+  bottom: -42px;
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .kpi-card-content {
@@ -1092,6 +1154,10 @@ select.input-field option {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.student-subject-table {
+  min-width: 640px;
 }
 
 @media (max-width: 1200px) {
@@ -1764,14 +1830,18 @@ select.input-field option {
 @media (max-width: 768px) {
   .auth-card {
     padding: 2rem 1.25rem;
+    border-radius: 24px;
   }
 
   .student-dashboard {
     padding: 1rem;
+    padding-bottom: calc(var(--bottom-nav-height) + 2.25rem);
   }
 
   .student-hero {
     padding: 1.25rem;
+    top: 0.75rem;
+    border-radius: 22px;
   }
 
   .student-hero-main {
@@ -1792,6 +1862,10 @@ select.input-field option {
     width: 100%;
   }
 
+  .student-tabs .tab-btn {
+    min-width: max-content;
+  }
+
   .student-chart-grid,
   .student-analytics-grid,
   .student-form-grid,
@@ -1805,6 +1879,7 @@ select.input-field option {
 
   .welcome-banner {
     padding: 1.5rem;
+    border-radius: 22px;
   }
 
   .welcome-banner h1,
@@ -1825,6 +1900,15 @@ select.input-field option {
   .admin-table th,
   .admin-table td {
     padding: 0.85rem 0.75rem;
+  }
+
+  .top-bar-actions {
+    align-items: stretch;
+  }
+
+  .system-msg,
+  .icon-action {
+    min-height: 44px;
   }
 }
 
@@ -1912,13 +1996,47 @@ select.input-field option {
 }
 
 @media (max-width: 560px) {
+  .mobile-nav {
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    padding: 0.45rem;
+    border-radius: 22px;
+  }
+
+  .mobile-nav-item {
+    font-size: 0.65rem;
+    gap: 0.3rem;
+    padding: 0.55rem 0.2rem;
+  }
+
   .student-hero-main {
     flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .hero-avatar-wrap {
+    width: 46px;
+    height: 46px;
+  }
+
+  .hero-name-title {
+    font-size: 1.2rem;
+    line-height: 1.2;
+  }
+
+  .hero-meta-text {
+    font-size: 0.82rem;
   }
 
   .welcome-banner h1,
   .titles h1 {
     font-size: 1.35rem;
+  }
+
+  .welcome-banner p {
+    font-size: 0.95rem;
+    margin-bottom: 1.25rem;
   }
 
   .admin-nav-item,
@@ -1934,6 +2052,92 @@ select.input-field option {
   .record-stat-card strong,
   .kpi-card-rich .data .value {
     font-size: 1.45rem;
+  }
+
+  .kpi-card {
+    padding: 1rem;
+  }
+
+  .kpi-card-content {
+    align-items: flex-start;
+  }
+
+  .student-toolbar {
+    gap: 0.85rem;
+  }
+
+  .student-toolbar-controls {
+    gap: 0.65rem;
+  }
+
+  .student-subject-table {
+    min-width: 100%;
+  }
+
+  .student-subject-table thead {
+    display: none;
+  }
+
+  .student-subject-table,
+  .student-subject-table tbody,
+  .student-subject-table tr,
+  .student-subject-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .student-subject-table tbody {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .student-subject-table tr {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 0.2rem 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  }
+
+  .student-subject-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: baseline;
+    padding: 0.7rem 0 !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.92rem;
+  }
+
+  .student-subject-table td:first-child {
+    border-top: 0;
+  }
+
+  .student-subject-table td::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+  }
+
+  .directory-toolbar-rich,
+  .select-filters,
+  .banner-ops {
+    gap: 0.85rem;
+  }
+
+  .select-filters {
+    flex-direction: column;
+  }
+
+  .select-wrap {
+    width: 100%;
+  }
+
+  .admin-pane {
+    padding: 0.85rem;
   }
 }
 

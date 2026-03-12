@@ -36,26 +36,6 @@ const API_BASE = 'https://automation-0pd0.onrender.com';
 const GRADE_COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#38bdf8', '#f97316'];
 const TAB_OPTIONS = ['Overview', 'Analytics', 'Profile', 'Security'];
 
-const gradePoints = {
-  O: 10,
-  S: 10,
-  'A+': 9,
-  A: 8,
-  'B+': 7,
-  B: 6,
-  C: 5,
-  D: 4,
-  E: 3,
-  U: 0,
-  W: 0,
-  I: 0,
-  P: 5,
-  F: 0,
-  AB: 0,
-  FAIL: 0,
-  PASS: 5,
-};
-
 const SortHeader = ({ label, field, currentSort, currentDir, onSort }) => {
   const isActive = currentSort === field;
   return (
@@ -104,6 +84,12 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
   const [assessmentFilter, setAssessmentFilter] = useState('ALL');
 
   const rollNo = user?.roll_no || user?.username;
+  const tabMap = useMemo(() => ({
+    overview: 'Overview',
+    analytics: 'Analytics',
+    profile: 'Profile',
+    security: 'Security',
+  }), []);
 
   const authHeaders = useMemo(() => {
     const token = localStorage.getItem('token');
@@ -262,6 +248,36 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
     }
   }, [rollNo]);
 
+  useEffect(() => {
+    const applyView = (view) => {
+      const nextTab = tabMap[String(view || '').toLowerCase()];
+      if (nextTab) {
+        setActiveTab(nextTab);
+      }
+    };
+
+    applyView(window.location.hash.replace('#', ''));
+
+    const handleStudentNav = (event) => applyView(event.detail);
+    const handleHashChange = () => applyView(window.location.hash.replace('#', ''));
+
+    window.addEventListener('student-view-change', handleStudentNav);
+    window.addEventListener('hashchange', handleHashChange);
+
+    return () => {
+      window.removeEventListener('student-view-change', handleStudentNav);
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, [tabMap]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    const nextHash = tab.toLowerCase();
+    if (window.location.hash.replace('#', '') !== nextHash) {
+      window.location.hash = nextHash;
+    }
+  };
+
   const marks = data?.marks ?? [];
   const attendance = data?.attendance ?? [];
 
@@ -358,7 +374,7 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
           <button
             key={tab}
             className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => handleTabChange(tab)}
           >
             {tab}
           </button>
@@ -469,7 +485,7 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
               </div>
             </div>
             <div className="student-table-wrap">
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <table className="student-subject-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
                     <SortHeader label="Code" field="code" currentSort={sortBy} currentDir={sortDir} onSort={(f) => { setSortDir(sortBy === f ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc'); setSortBy(f); }} />
@@ -483,16 +499,16 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
                 <tbody>
                   {sortedMarks.map((mark) => (
                     <tr key={mark.id} style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                      <td style={{ padding: '0.85rem 0' }}>{mark.subject?.course_code || '-'}</td>
-                      <td style={{ padding: '0.85rem 0' }}>{mark.subject?.name || '-'}</td>
-                      <td style={{ padding: '0.85rem 0' }}>{mark.semester}</td>
-                      <td style={{ padding: '0.85rem 0' }}>{mark.grade || '-'}</td>
-                      <td style={{ padding: '0.85rem 0' }}>
+                      <td data-label="Code" style={{ padding: '0.85rem 0' }}>{mark.subject?.course_code || '-'}</td>
+                      <td data-label="Subject" style={{ padding: '0.85rem 0' }}>{mark.subject?.name || '-'}</td>
+                      <td data-label="Semester" style={{ padding: '0.85rem 0' }}>{mark.semester}</td>
+                      <td data-label="Grade" style={{ padding: '0.85rem 0' }}>{mark.grade || '-'}</td>
+                      <td data-label={assessmentFilter === 'ALL' ? 'Internal' : assessmentFilter} style={{ padding: '0.85rem 0' }}>
                         {assessmentFilter === 'ALL' 
                           ? (mark.internal_marks ?? '-') 
                           : (assessmentFilter === 'CIT1' ? mark.cit1_marks : (assessmentFilter === 'CIT2' ? mark.cit2_marks : mark.cit3_marks)) ?? '-'}
                       </td>
-                      <td style={{ padding: '0.85rem 0' }}>{mark.total_marks ?? '-'}</td>
+                      <td data-label="Total" style={{ padding: '0.85rem 0' }}>{mark.total_marks ?? '-'}</td>
                     </tr>
                   ))}
                 </tbody>

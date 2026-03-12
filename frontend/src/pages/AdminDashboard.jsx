@@ -90,15 +90,19 @@ const ChartCard = ({ title, copy, height = 260, data, children }) => (
   </div>
 );
 
-const StatCard = ({ icon: Icon, label, value, accent }) => (
-  <div className="kpi-card-rich glass-panel">
-    <div className="icon-bg" style={{ background: `${accent}20`, color: accent }}><Icon size={22} /></div>
-    <div className="data">
-      <span className="label">{label}</span>
-      <strong className="value">{value}</strong>
+const StatCard = ({ icon, label, value, accent }) => {
+  const IconComponent = icon;
+
+  return (
+    <div className="kpi-card-rich glass-panel">
+      <div className="icon-bg" style={{ background: `${accent}20`, color: accent }}><IconComponent size={22} /></div>
+      <div className="data">
+        <span className="label">{label}</span>
+        <strong className="value">{value}</strong>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const buildStudentAnalytics = (record) => {
   const semesterGrades = record?.semester_grades || [];
