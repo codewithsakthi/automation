@@ -708,7 +708,7 @@ def build_admin_student_credential(roll_no: str, db: Session) -> schemas.AdminSt
     )
 
 
-@app.get('/')
+@app.api_route("/", methods=["GET", "HEAD", "OPTIONS"])
 async def root():
     return {
         'status': 'online',
