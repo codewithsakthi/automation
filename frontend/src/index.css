@@ -39,6 +39,10 @@ body {
   min-height: 100vh;
 }
 
+.app-container {
+  min-height: 100vh;
+}
+
 #root {
   display: flex;
   flex-direction: column;
@@ -693,6 +697,116 @@ select.input-field option {
 .filter-chip.active {
   background: rgba(56, 189, 248, 0.12);
   border-color: rgba(56, 189, 248, 0.22);
+}
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+}
+
+.auth-card {
+  width: min(100%, 420px);
+  padding: 2.5rem;
+}
+
+.student-dashboard {
+  width: min(100%, 1440px);
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.student-hero {
+  padding: 1.5rem 2rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.student-hero-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.student-hero-actions,
+.student-tabs {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.student-tabs {
+  margin-bottom: 1.5rem;
+}
+
+.student-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.student-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.student-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.student-toolbar-controls {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  flex: 1 1 540px;
+}
+
+.student-toolbar-controls .input-field {
+  flex: 1 1 150px;
+  min-width: 0;
+}
+
+.student-search {
+  position: relative;
+  flex: 2 1 240px;
+  min-width: 0;
+}
+
+.student-table-wrap {
+  overflow-x: auto;
+}
+
+.student-analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.student-form-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 480px) minmax(0, 1fr);
+  gap: 1.5rem;
+}
+
+.modal-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
 }
 
 @media (max-width: 1200px) {
@@ -1363,6 +1477,43 @@ select.input-field option {
 }
 
 @media (max-width: 768px) {
+  .auth-card {
+    padding: 2rem 1.25rem;
+  }
+
+  .student-dashboard {
+    padding: 1rem;
+  }
+
+  .student-hero {
+    padding: 1.25rem;
+  }
+
+  .student-hero-main {
+    align-items: flex-start;
+  }
+
+  .student-hero-actions,
+  .student-tabs,
+  .student-toolbar-controls {
+    width: 100%;
+  }
+
+  .student-hero-actions .btn-primary,
+  .student-tabs .tab-btn,
+  .student-toolbar-controls .input-field,
+  .student-toolbar-controls .student-search,
+  .modal-actions .btn-primary {
+    width: 100%;
+  }
+
+  .student-chart-grid,
+  .student-analytics-grid,
+  .student-form-grid,
+  .modal-actions {
+    grid-template-columns: 1fr;
+  }
+
   .admin-pane {
     padding: 1rem;
   }
@@ -1389,6 +1540,115 @@ select.input-field option {
   .admin-table th,
   .admin-table td {
     padding: 0.85rem 0.75rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-shell {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .admin-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .admin-sidebar .brand h2,
+  .admin-sidebar .brand p,
+  .admin-sidebar .admin-nav-item span,
+  .admin-sidebar .info {
+    display: block;
+  }
+
+  .admin-sidebar .logout-btn {
+    display: flex;
+  }
+
+  .sidebar-top,
+  .sidebar-bottom {
+    padding: 1rem;
+  }
+
+  .admin-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .admin-nav-item {
+    width: auto;
+    flex: 1 1 180px;
+    justify-content: center;
+  }
+
+  .sidebar-bottom {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .admin-profile-pill {
+    flex: 1 1 220px;
+  }
+
+  .logout-btn {
+    flex: 1 1 180px;
+    justify-content: center;
+  }
+
+  .admin-top-bar {
+    height: auto;
+    padding: 1rem;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .top-bar-actions {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .system-msg {
+    flex: 1 1 260px;
+  }
+
+  .search-box-rich,
+  .filter-pills,
+  .select-filters {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .student-hero-main {
+    flex-direction: column;
+  }
+
+  .welcome-banner h1,
+  .titles h1 {
+    font-size: 1.35rem;
+  }
+
+  .admin-nav-item,
+  .logout-btn,
+  .admin-profile-pill {
+    flex-basis: 100%;
+  }
+
+  .breadcrumb {
+    flex-wrap: wrap;
+  }
+
+  .record-stat-card strong,
+  .kpi-card-rich .data .value {
+    font-size: 1.45rem;
   }
 }
 

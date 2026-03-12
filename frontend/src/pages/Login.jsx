@@ -52,8 +52,8 @@ const Login = ({ onLogin }) => {
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-      <div className="glass-panel animate-fade" style={{ width: '400px', padding: '2.5rem' }}>
+    <div className="auth-page">
+      <div className="glass-panel animate-fade auth-card">
         <h2 className="gradient-text" style={{ fontSize: '2rem', marginBottom: '1.5rem', textAlign: 'center' }}>Welcome Back</h2>
         <form onSubmit={handleLogin}>
           <div className="input-group">

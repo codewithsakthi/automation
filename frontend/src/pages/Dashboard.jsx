@@ -327,9 +327,9 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1440px', margin: '0 auto' }}>
-      <div className="glass-panel" style={{ padding: '1.5rem 2rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+    <div className="student-dashboard">
+      <div className="glass-panel student-hero">
+        <div className="student-hero-main">
           <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--accent-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <UserIcon color="white" size={26} />
           </div>
@@ -343,7 +343,7 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
             </p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        <div className="student-hero-actions">
           <button className="btn-primary" onClick={handleSyncInitiate} disabled={syncing} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }}>
             {syncing ? <Loader2 className="spinner" /> : <RefreshCw size={18} />} Sync Data
           </button>
@@ -353,7 +353,7 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+      <div className="student-tabs">
         {TAB_OPTIONS.map((tab) => (
           <button
             key={tab}
@@ -382,7 +382,7 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
 
       {activeTab === 'Overview' ? (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+          <div className="student-kpi-grid">
             {[
               { icon: Award, label: 'Average Grade Points', value: averagePoints, color: '#6366f1' },
               { icon: Calendar, label: 'Attendance', value: attendancePct, color: '#ec4899' },
@@ -401,7 +401,7 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+          <div className="student-chart-grid">
             <div className="glass-panel" style={{ padding: '1.8rem' }}>
               <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>CIT Marks Performance</h2>
               <div style={{ height: '300px' }}>
@@ -442,12 +442,12 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
           </div>
 
           <div className="glass-panel" style={{ padding: '1.5rem 2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+            <div className="student-toolbar">
               <h2 style={{ fontSize: '1.15rem' }}>Subject Explorer</h2>
-              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                <div style={{ position: 'relative' }}>
+              <div className="student-toolbar-controls">
+                <div className="student-search">
                   <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input className="input-field" style={{ paddingLeft: '36px', minWidth: '220px' }} placeholder="Search subject or code" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                  <input className="input-field" style={{ paddingLeft: '36px', width: '100%' }} placeholder="Search subject or code" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
                 <select className="input-field" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}>
                   <option value="ALL">All grades</option>
@@ -469,7 +469,7 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
                 </select>
               </div>
             </div>
-            <div style={{ overflowX: 'auto' }}>
+            <div className="student-table-wrap">
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
@@ -504,7 +504,7 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
       ) : null}
 
       {activeTab === 'Analytics' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.5rem' }}>
+        <div className="student-analytics-grid">
           <div className="glass-panel" style={{ padding: '1.8rem' }}>
             <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>Grade Distribution</h2>
             <div style={{ height: '280px' }}>
@@ -587,7 +587,7 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
       ) : null}
 
       {activeTab === 'Profile' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 480px) 1fr', gap: '1.5rem' }}>
+        <div className="student-form-grid">
           <form className="glass-panel" style={{ padding: '1.8rem' }} onSubmit={handleProfileSave}>
             <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>Edit Profile</h2>
             <div className="input-group">
@@ -623,7 +623,7 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
       ) : null}
 
       {activeTab === 'Security' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 480px) 1fr', gap: '1.5rem' }}>
+        <div className="student-form-grid">
           <form className="glass-panel" style={{ padding: '1.8rem' }} onSubmit={handlePasswordSave}>
             <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>Change Password</h2>
             <div className="input-group">
@@ -674,7 +674,7 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
                   onChange={(e) => setSyncDob(e.target.value.replace(/\D/g, ''))}
                 />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="modal-actions">
                 <button type="button" className="btn-primary" onClick={() => setShowDobModal(false)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }}>
                   Cancel
                 </button>
