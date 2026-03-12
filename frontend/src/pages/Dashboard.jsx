@@ -330,15 +330,15 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
     <div className="student-dashboard">
       <div className="glass-panel student-hero">
         <div className="student-hero-main">
-          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--accent-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="hero-avatar-wrap">
             <UserIcon color="white" size={26} />
           </div>
-          <div>
-            <h1 style={{ fontSize: '1.65rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div className="hero-text-wrap">
+            <h1 className="hero-name-title">
               {profile?.name || data?.name || 'Student'}
-              {profile?.rank && <span style={{ fontSize: '0.9rem', padding: '0.2rem 0.6rem', borderRadius: '20px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)' }}>Rank #{profile.rank}</span>}
+              {profile?.rank && <span className="hero-rank-badge">Rank #{profile.rank}</span>}
             </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+            <p className="hero-meta-text">
               Roll: {rollNo} | {profile?.reg_no ? `Reg: ${profile.reg_no} | ` : ''} {profile?.program_name || 'Program unavailable'} | {profile?.batch || data?.batch || 'Batch unavailable'}
             </p>
           </div>
@@ -353,13 +353,12 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
         </div>
       </div>
 
-      <div className="student-tabs">
+      <div className="student-tabs scroll-x">
         {TAB_OPTIONS.map((tab) => (
           <button
             key={tab}
-            className="tab-btn"
+            className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
             onClick={() => setActiveTab(tab)}
-            style={{ background: activeTab === tab ? 'var(--accent-gradient)' : 'rgba(255,255,255,0.04)', color: 'white' }}
           >
             {tab}
           </button>
@@ -389,12 +388,12 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
               { icon: TrendingUp, label: 'Internal Avg', value: averageInternal, color: '#10b981' },
               { icon: Book, label: 'Backlogs', value: String(backlogs), color: '#f59e0b' },
             ].map((stat) => (
-              <div key={stat.label} className="glass-panel" style={{ padding: '1.4rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <stat.icon color={stat.color} size={30} />
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{stat.label}</p>
-                    <h3 style={{ fontSize: '1.8rem', fontWeight: '700' }}>{stat.value}</h3>
+              <div key={stat.label} className="glass-panel kpi-card">
+                <div className="kpi-card-content">
+                  <stat.icon color={stat.color} size={28} />
+                  <div className="kpi-card-text">
+                    <p className="kpi-label">{stat.label}</p>
+                    <h3 className="kpi-value">{stat.value}</h3>
                   </div>
                 </div>
               </div>

@@ -417,6 +417,12 @@ function AdminDashboard({ user, onLogout, onUserUpdate }) {
 
   useEffect(() => {
     loadChromeData(true);
+
+    const handleMobileNav = (e) => {
+      setActiveView(e.detail);
+    };
+    window.addEventListener('admin-view-change', handleMobileNav);
+    return () => window.removeEventListener('admin-view-change', handleMobileNav);
   }, []);
 
   useEffect(() => {
@@ -477,15 +483,15 @@ function AdminDashboard({ user, onLogout, onUserUpdate }) {
           </div>
 
           <nav className="admin-nav" style={{ marginTop: '2rem' }}>
-            <button className={`admin-nav-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => setActiveView('overview')}>
+            <button className={`admin-nav-item ${activeView === 'overview' ? 'active' : ''}`} id="nav-overview" onClick={() => setActiveView('overview')}>
               <LayoutDashboard size={18} />
               <span>Overview</span>
             </button>
-            <button className={`admin-nav-item ${activeView === 'directory' || activeView === 'student-record' ? 'active' : ''}`} onClick={() => setActiveView('directory')}>
+            <button className={`admin-nav-item ${activeView === 'directory' || activeView === 'student-record' ? 'active' : ''}`} id="nav-students" onClick={() => setActiveView('directory')}>
               <Users size={18} />
               <span>Students</span>
             </button>
-            <button className={`admin-nav-item ${activeView === 'intelligence' ? 'active' : ''}`} onClick={() => setActiveView('intelligence')}>
+            <button className={`admin-nav-item ${activeView === 'intelligence' ? 'active' : ''}`} id="nav-intel" onClick={() => setActiveView('intelligence')}>
               <Sparkles size={18} />
               <span>Intelligence</span>
             </button>
@@ -519,6 +525,12 @@ function AdminDashboard({ user, onLogout, onUserUpdate }) {
                   ? 'Workspace intelligence'
                   : activeView.charAt(0).toUpperCase() + activeView.slice(1)}
             </span>
+          </div>
+          <div className="mobile-only-header">
+             <div className="brand-mobile">
+                <GraduationCap color="var(--primary)" size={20} />
+                <span style={{ fontWeight: 700 }}>PortalCRM</span>
+             </div>
           </div>
           <div className="top-bar-actions">
             {workspaceMessage ? <div className="system-msg"><Sparkles size={14} /> {workspaceMessage}</div> : null}

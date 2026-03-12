@@ -54,16 +54,15 @@ const Login = ({ onLogin }) => {
   return (
     <div className="auth-page">
       <div className="glass-panel animate-fade auth-card">
-        <h2 className="gradient-text" style={{ fontSize: '2rem', marginBottom: '1.5rem', textAlign: 'center' }}>Welcome Back</h2>
+        <h2 className="gradient-text auth-title">Welcome Back</h2>
         <form onSubmit={handleLogin}>
           <div className="input-group">
-            <label style={{ color: 'var(--text-muted)' }}>Username / Roll Number</label>
-            <div style={{ position: 'relative' }}>
-              <User size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <label>Username / Roll Number</label>
+            <div className="input-with-icon">
+              <User size={18} className="input-icon" />
               <input
                 type="text"
                 className="input-field"
-                style={{ width: '100%', paddingLeft: '40px' }}
                 placeholder="258312"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -72,13 +71,12 @@ const Login = ({ onLogin }) => {
             </div>
           </div>
           <div className="input-group">
-            <label style={{ color: 'var(--text-muted)' }}>Password</label>
-            <div style={{ position: 'relative' }}>
-              <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <label>Password</label>
+            <div className="input-with-icon">
+              <Lock size={18} className="input-icon" />
               <input
                 type="password"
                 className="input-field"
-                style={{ width: '100%', paddingLeft: '40px' }}
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -86,10 +84,10 @@ const Login = ({ onLogin }) => {
               />
             </div>
           </div>
-          <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1rem' }} disabled={loading}>
+          <button type="submit" className="btn-primary auth-submit" disabled={loading}>
             {loading ? <Loader2 className="spinner" /> : 'Sign In'}
           </button>
-          {error ? <p style={{ color: '#fda4af', marginTop: '1rem', textAlign: 'center' }}>{error}</p> : null}
+          {error ? <p className="auth-error">{error}</p> : null}
         </form>
       </div>
     </div>

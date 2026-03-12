@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import MobileNav from './components/MobileNav';
 import './index.css';
 
 const getStoredUser = () => {
@@ -59,6 +60,20 @@ function App() {
           />
           <Route path="*" element={<Navigate to={isAuthenticated ? (isAdmin ? '/admin' : '/dashboard') : '/login'} replace />} />
         </Routes>
+        {isAuthenticated && (
+          <MobileNav 
+            role={user?.role} 
+            activeAction={window.location.hash.split('#')[1] || 'overview'} 
+            onAction={(view) => {
+              if (isAdmin) {
+                // Since AdminDashboard is a standalone page, we can use a simple event or hash
+                window.location.hash = view;
+                // Or better, since it's the same page, we can use a custom event
+                window.dispatchEvent(new CustomEvent('admin-view-change', { detail: view }));
+              }
+            }} 
+          />
+        )}
       </div>
     </Router>
   );
