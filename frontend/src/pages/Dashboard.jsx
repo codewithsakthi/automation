@@ -32,7 +32,7 @@ import {
   User as UserIcon,
 } from 'lucide-react';
 
-const API_BASE = 'https://hmm-rrmmlltt.b4a.run';
+const API_BASE = 'https://spark-backend-production-dcb3.up.railway.app';
 const GRADE_COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#38bdf8', '#f97316'];
 const TAB_OPTIONS = ['Overview', 'Analytics', 'Profile', 'Security'];
 
