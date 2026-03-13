@@ -24,5 +24,9 @@ COPY . .
 # Expose the port the app runs on
 EXPOSE 8000
 
+# Create a non-root user and switch to it
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
+
 # Command to run the application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

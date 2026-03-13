@@ -11,7 +11,7 @@ ssl_context.verify_mode = ssl.CERT_NONE
 
 class Settings(BaseSettings):
     # Update to use asyncpg driver
-    DATABASE_URL: str = "postgresql+asyncpg://avnadmin:AVNS_Po7l5FxNwlEiEMRM-ha@pg-22fd1f-spark-db.b.aivencloud.com:24087/defaultdb?sslmode=require"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/spark"
     SECRET_KEY: str = "maybedemo"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30

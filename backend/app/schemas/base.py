@@ -254,6 +254,40 @@ class StudentMetricCard(BaseModel):
     hint: Optional[str] = None
 
 
+class StudentRiskScore(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    roll_no: str
+    name: str
+    risk_score: float = Field(ge=0, le=100)
+    attendance_factor: float = Field(ge=0, le=100)
+    internal_marks_factor: float = Field(ge=0, le=100)
+    gpa_drop_factor: float = Field(ge=0)
+    is_at_risk: bool
+    risk_level: str = Field(pattern='^(Critical|High|Moderate|Low)$')
+    alerts: List[str]
+
+
+class SemesterGradeRecord(BaseModel):
+    semester: Optional[int] = None
+    subject_code: Optional[str] = None
+    subject_title: Optional[str] = None
+    grade: Optional[str] = None
+    marks: Optional[float] = None
+    internal_marks: Optional[float] = None
+    attempt: Optional[int] = None
+    remarks: Optional[str] = None
+    grade_point: Optional[float] = None
+
+
+class StudentRecordHealth(BaseModel):
+    completion_percentage: float
+    available_sections: List[str] = Field(default_factory=list)
+    missing_sections: List[str] = Field(default_factory=list)
+    last_counselor_update: Optional[date] = None
+    latest_activity_year: Optional[str] = None
+
+
 class StudentCommandCenterResponse(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
@@ -406,16 +440,6 @@ class CounselorDiaryRecord(BaseModel):
     created_at: Optional[datetime] = None
 
 
-class SemesterGradeRecord(BaseModel):
-    semester: Optional[int] = None
-    subject_code: Optional[str] = None
-    subject_title: Optional[str] = None
-    grade: Optional[str] = None
-    marks: Optional[float] = None
-    internal_marks: Optional[float] = None
-    attempt: Optional[int] = None
-    remarks: Optional[str] = None
-    grade_point: Optional[float] = None
 
 
 class InternalMarkRecord(BaseModel):
@@ -426,12 +450,6 @@ class InternalMarkRecord(BaseModel):
     subject_title: Optional[str] = None
 
 
-class StudentRecordHealth(BaseModel):
-    completion_percentage: float
-    available_sections: List[str] = Field(default_factory=list)
-    missing_sections: List[str] = Field(default_factory=list)
-    last_counselor_update: Optional[date] = None
-    latest_activity_year: Optional[str] = None
 
 
 class StudentAcademicSnapshot(BaseModel):
@@ -599,18 +617,6 @@ class AdvancedAnalyticsDashboard(BaseModel):
     insights: List[str]
     heatmap: List[HeatmapRow]
     top_performers: List[dict]
-class StudentRiskScore(BaseModel):
-    model_config = ConfigDict(extra='forbid')
-
-    roll_no: str
-    name: str
-    risk_score: float = Field(ge=0, le=100)
-    attendance_factor: float = Field(ge=0, le=100)
-    internal_marks_factor: float = Field(ge=0, le=100)
-    gpa_drop_factor: float = Field(ge=0)
-    is_at_risk: bool
-    risk_level: str = Field(pattern='^(Critical|High|Moderate|Low)$')
-    alerts: List[str]
 
 class FacultyPerformance(BaseModel):
     faculty_id: str
