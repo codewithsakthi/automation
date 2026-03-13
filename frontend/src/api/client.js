@@ -1,7 +1,15 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'spark-backend-production-69db.up.railway.app';
+const VITE_API_URL = import.meta.env.VITE_API_URL;
+const FALLBACK_URL = 'https://spark-backend-production-69db.up.railway.app';
+
+let API_BASE = VITE_API_URL || FALLBACK_URL;
+
+// Ensure API_BASE has a protocol
+if (API_BASE && !API_BASE.startsWith('http')) {
+  API_BASE = `https://${API_BASE}`;
+}
 
 const api = axios.create({
   baseURL: API_BASE,
