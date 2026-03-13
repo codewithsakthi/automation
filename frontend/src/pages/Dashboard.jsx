@@ -124,7 +124,7 @@ const Dashboard = () => {
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-3">
-            <Sparkles size={14} /> Student Dashboard
+            <Sparkles size={14} /> SPARK Student Dashboard
           </span>
           <h1 className="text-4xl font-extrabold tracking-tight mb-2">
             Welcome, <span className="text-gradient">{user?.name || 'Academic'}</span>

@@ -82,7 +82,7 @@ const Login = () => {
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest mb-2">
               <Sparkles size={12} /> Academic Intelligence
             </div>
-            <h1 className="text-4xl font-black tracking-tighter text-foreground mb-2">Nexus <span className="text-primary">Portal</span></h1>
+            <h1 className="text-4xl font-black tracking-tighter text-foreground mb-2">SPARK <span className="text-primary">Portal</span></h1>
             <p className="text-muted-foreground font-medium text-sm">Sign in to your high-speed academic command center.</p>
           </div>
 

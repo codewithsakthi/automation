@@ -282,7 +282,7 @@ export default function AdminDashboard() {
         <div className="space-y-3">
           <p className="text-[11px] font-black uppercase tracking-[0.24em] text-white/70">Enterprise Academic Intelligence</p>
           <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-white md:text-5xl">
-            MCA Academic Intelligence Command Center
+            SPARK Command Center
           </h1>
           <p className="max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
             {data?.daily_briefing || 'Aggregating ranking, placement, bottleneck, and faculty impact signals.'}
