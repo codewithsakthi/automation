@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, Numeric, ARRAY, CHAR, TIMESTAMP, text
 from sqlalchemy.orm import relationship
-from .database import Base
+from ..core.database import Base
 
 class Role(Base):
     __tablename__ = "roles"
@@ -52,6 +52,7 @@ class Staff(Base):
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
 
     user = relationship("User")
+    assignments = relationship("FacultySubjectAssignment", back_populates="faculty")
 
 class Subject(Base):
     __tablename__ = "subjects"
@@ -61,6 +62,7 @@ class Subject(Base):
     credits = Column(Integer, default=0)
     program_id = Column(Integer, ForeignKey("programs.id"))
     semester = Column(Integer)
+    faculty_assignments = relationship("FacultySubjectAssignment", back_populates="subject")
 
 class StudentMark(Base):
     __tablename__ = "student_marks"
@@ -91,3 +93,17 @@ class Attendance(Base):
     total_hours = Column(Integer)
 
     student = relationship("Student", back_populates="attendance")
+
+
+class FacultySubjectAssignment(Base):
+    __tablename__ = "faculty_subject_assignments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    faculty_id = Column(Integer, ForeignKey("staff.id"), nullable=False)
+    subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=False)
+    academic_year = Column(String(20))
+    section = Column(String(20))
+    created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
+
+    faculty = relationship("Staff", back_populates="assignments")
+    subject = relationship("Subject", back_populates="faculty_assignments")

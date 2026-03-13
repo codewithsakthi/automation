@@ -1,95 +1,86 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import AdminDashboard from './pages/AdminDashboard';
 import MobileNav from './components/MobileNav';
+import ProtectedRoute from './components/ProtectedRoute';
+import { useAuthStore } from './store/authStore';
+import { useThemeStore } from './store/themeStore';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './index.css';
 
-const getStoredUser = () => {
-  const raw = localStorage.getItem('user');
-  if (!raw) {
-    return null;
-  }
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 
-  try {
-    return JSON.parse(raw);
-  } catch {
-    localStorage.removeItem('user');
-    return null;
-  }
-};
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 300000,
+    },
+  },
+});
 
 function App() {
-  const [user, setUser] = useState(getStoredUser);
-  const [activeAction, setActiveAction] = useState(() => window.location.hash.replace('#', '') || 'overview');
-
-  const isAuthenticated = useMemo(() => Boolean(user && localStorage.getItem('token')), [user]);
-  const isAdmin = user?.role === 'admin';
+  const { user, logout } = useAuthStore();
+  const { theme } = useThemeStore();
+  
+  const isAuthenticated = !!user;
+  const isAdmin = user?.role === 'admin' || user?.role?.name === 'admin';
 
   useEffect(() => {
-    const syncHash = () => {
-      setActiveAction(window.location.hash.replace('#', '') || 'overview');
-    };
-
-    syncHash();
-    window.addEventListener('hashchange', syncHash);
-
-    return () => window.removeEventListener('hashchange', syncHash);
-  }, []);
-
-  const handleLogin = (nextUser) => {
-    localStorage.setItem('user', JSON.stringify(nextUser));
-    setUser(nextUser);
-  };
-
-  const handleUserUpdate = (nextUser) => {
-    localStorage.setItem('user', JSON.stringify(nextUser));
-    setUser(nextUser);
-  };
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('syncDob');
-    localStorage.removeItem('lastSyncMeta');
-    localStorage.removeItem('lastSyncMessage');
-    window.location.hash = '';
-    setUser(null);
-  };
-
-  const handleMobileAction = (view) => {
-    setActiveAction(view);
-    window.location.hash = view;
-    window.dispatchEvent(new CustomEvent(isAdmin ? 'admin-view-change' : 'student-view-change', { detail: view }));
+    logout();
+    window.location.href = '/login';
   };
 
   return (
-    <Router>
-      <div className="app-container">
-        <Routes>
-          <Route path="/login" element={isAuthenticated ? <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace /> : <Login onLogin={handleLogin} />} />
-          <Route
-            path="/dashboard"
-            element={isAuthenticated && !isAdmin ? <Dashboard user={user} onLogout={handleLogout} onUserUpdate={handleUserUpdate} /> : <Navigate to={isAuthenticated ? '/admin' : '/login'} replace />}
-          />
-          <Route
-            path="/admin"
-            element={isAuthenticated && isAdmin ? <AdminDashboard user={user} onLogout={handleLogout} onUserUpdate={handleUserUpdate} /> : <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />}
-          />
-          <Route path="*" element={<Navigate to={isAuthenticated ? (isAdmin ? '/admin' : '/dashboard') : '/login'} replace />} />
-        </Routes>
-        {isAuthenticated && (
-          <MobileNav
-            role={user?.role}
-            activeAction={activeAction}
-            onAction={handleMobileAction}
-            onLogout={handleLogout}
-          />
-        )}
-      </div>
-    </Router>
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+          <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm font-semibold text-muted-foreground">Loading workspace...</div>}>
+            <Routes>
+              <Route
+                path="/login"
+                element={isAuthenticated ? <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace /> : <Login />}
+              />
+              
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute adminOnly>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route path="*" element={<Navigate to={isAuthenticated ? (isAdmin ? '/admin' : '/dashboard') : '/login'} replace />} />
+            </Routes>
+          </Suspense>
+          
+          {isAuthenticated && (
+            <MobileNav
+              role={user?.role?.name || user?.role}
+              onLogout={handleLogout}
+            />
+          )}
+        </div>
+      </Router>
+    </QueryClientProvider>
   );
 }
 
 export default App;
+

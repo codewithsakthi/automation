@@ -5,11 +5,13 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import text
+from sqlalchemy import text, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
-from . import auth, models
+from ..core import auth
+from .. import models
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = PROJECT_ROOT / 'script.py'
@@ -80,8 +82,9 @@ class PortalScraper:
         digits = re.sub(r'\D', '', dob or '')
         return digits[:8] if digits else None
 
-    def _get_student_role(self, db: Session):
-        return db.query(models.Role).filter(models.Role.name == 'student').first()
+    async def _get_student_role(self, db: AsyncSession):
+        result = await db.execute(select(models.Role).filter(models.Role.name == 'student'))
+        return result.scalars().first()
 
     def _normalize_grade(self, grade: str | None):
         if not grade:
@@ -117,21 +120,23 @@ class PortalScraper:
             return None
         return info, marks, detailed_attendance, attendance_summary, cit_marks, university_marks, coe_results
 
-    def _get_or_create_subject(self, subject_desc, semester, db: Session):
+    async def _get_or_create_subject(self, subject_desc, semester, db: AsyncSession):
         course_code = subject_desc.split('-', 1)[0].strip() if '-' in subject_desc else subject_desc.strip()[:20]
-        subject = db.query(models.Subject).filter(models.Subject.course_code == course_code).first()
+        result = await db.execute(select(models.Subject).filter(models.Subject.course_code == course_code))
+        subject = result.scalars().first()
         if not subject:
             name = subject_desc.split('-', 1)[1].strip() if '-' in subject_desc else subject_desc.strip()
             subject = models.Subject(course_code=course_code, name=name, semester=semester)
             db.add(subject)
-            db.flush()
+            await db.flush()
         return subject
 
-    def _find_subject_by_name(self, subject_name, db: Session, semester=None):
+    async def _find_subject_by_name(self, subject_name, db: AsyncSession, semester=None):
         normalized = re.sub(r'\s+', ' ', subject_name).strip().upper()
         
         # 1. Exact Match in DB
-        subjects = db.query(models.Subject).all()
+        result = await db.execute(select(models.Subject))
+        subjects = result.scalars().all()
         for s in subjects:
             if s.name and normalized == re.sub(r'\s+', ' ', s.name).strip().upper():
                 return s
@@ -139,7 +144,8 @@ class PortalScraper:
         # 2. Curriculum Mapping check
         if normalized in self.MCA_R2024_CURRICULUM:
             info = self.MCA_R2024_CURRICULUM[normalized]
-            subject = db.query(models.Subject).filter(models.Subject.course_code == info['code']).first()
+            result = await db.execute(select(models.Subject).filter(models.Subject.course_code == info['code']))
+            subject = result.scalars().first()
             if not subject:
                 subject = models.Subject(
                     course_code=info['code'],
@@ -148,7 +154,7 @@ class PortalScraper:
                     semester=info['sem'] or semester
                 )
                 db.add(subject)
-                db.flush()
+                await db.flush()
             return subject
 
         # 3. Partial Match in DB
@@ -157,19 +163,22 @@ class PortalScraper:
                 return s
         return None
 
-    def _sync_student_record(self, roll_no, dob, info, db: Session):
-        student = db.query(models.Student).filter(models.Student.roll_no == roll_no).first()
-        user = db.query(models.User).filter(models.User.username == roll_no).first()
+    async def _sync_student_record(self, roll_no, dob, info, db: AsyncSession):
+        result = await db.execute(select(models.Student).filter(models.Student.roll_no == roll_no))
+        student = result.scalars().first()
+        result = await db.execute(select(models.User).options(joinedload(models.User.role)).filter(models.User.username == roll_no))
+        user = result.scalars().first()
         
         # Safeguard: If the existing user is an admin/staff, we MUST NOT link the student profile to them.
         # We'll create a new student-specific user instead if the IDs don't match correctly.
         if user and user.role and user.role.name in ['admin', 'staff']:
             print(f"Warning: Found existing {user.role.name} user with username {roll_no}. Creating separate student account.")
             # We'll use a prefix or different strategy if roll_no conflicts with admin/staff usernames
-            user = db.query(models.User).filter(models.User.username == f"stu_{roll_no}").first()
+            result = await db.execute(select(models.User).filter(models.User.username == f"stu_{roll_no}"))
+            user = result.scalars().first()
 
         if not user:
-            student_role = self._get_student_role(db)
+            student_role = await self._get_student_role(db)
             if not student_role:
                 raise ValueError('Student role not found')
             initial_password = self._normalize_dob_password(dob)
@@ -178,7 +187,8 @@ class PortalScraper:
             
             # Use original roll_no unless it conflicts with a non-student user
             target_username = roll_no
-            potential_conflict = db.query(models.User).filter(models.User.username == target_username).first()
+            result = await db.execute(select(models.User).filter(models.User.username == target_username))
+            potential_conflict = result.scalars().first()
             if potential_conflict:
                 target_username = f"stu_{roll_no}"
 
@@ -190,10 +200,11 @@ class PortalScraper:
             )
             try:
                 db.add(user)
-                db.flush()
+                await db.flush()
             except IntegrityError:
-                db.rollback()
-                user = db.query(models.User).filter(models.User.username == target_username).first()
+                await db.rollback()
+                result = await db.execute(select(models.User).filter(models.User.username == target_username))
+                user = result.scalars().first()
                 if not user:
                     raise
 
@@ -208,7 +219,7 @@ class PortalScraper:
                 dob=self._parse_dob(dob) or datetime.utcnow().date(),
             )
             db.add(student)
-            db.flush()
+            await db.flush()
 
         if student:
             student.name = info.get('Name', student.name)
@@ -221,16 +232,16 @@ class PortalScraper:
             semester = str(info.get('Semester', '')).strip()
             if semester.isdigit():
                 student.current_semester = int(semester)
-            db.flush()
+            await db.flush()
         return student
 
-    def _sync_marks_to_db(self, student, marks, cit_marks, university_marks, db: Session):
+    async def _sync_marks_to_db(self, student, marks, cit_marks, university_marks, db: AsyncSession):
         if not student:
             return
 
         # Clear existing raw SQL marks for this student to avoid duplicates during resync
-        db.execute(text("DELETE FROM semester_grades WHERE roll_no = :r"), {'r': student.roll_no})
-        db.execute(text("DELETE FROM internal_marks WHERE roll_no = :r"), {'r': student.roll_no})
+        await db.execute(text("DELETE FROM semester_grades WHERE roll_no = :r"), {'r': student.roll_no})
+        await db.execute(text("DELETE FROM internal_marks WHERE roll_no = :r"), {'r': student.roll_no})
 
         merged_grades = {} # subject_code -> {semester, subject_title, grade, internal, marks}
 
@@ -260,17 +271,18 @@ class PortalScraper:
                     merged_grades[subject_code]['grade'] = grade
 
             # Also update ORM models.Subject and models.StudentMark
-            subject = self._get_or_create_subject(subject_str, semester, db)
-            entry = db.query(models.StudentMark).filter(
+            subject = await self._get_or_create_subject(subject_str, semester, db)
+            result = await db.execute(select(models.StudentMark).filter(
                 models.StudentMark.student_id == student.id,
                 models.StudentMark.subject_id == subject.id,
                 models.StudentMark.semester == semester,
-            ).first()
+            ))
+            entry = result.scalars().first()
             if not entry:
                 entry = models.StudentMark(student_id=student.id, subject_id=subject.id, semester=semester)
                 db.add(entry)
             entry.grade = grade
-            db.flush()
+            await db.flush()
 
         # 2. Process University Marks (overwrite/refine grades)
         for item in university_marks:
@@ -293,7 +305,8 @@ class PortalScraper:
                     merged_grades[subject_code]['grade'] = grade
 
             # ORM Update
-            subject = db.query(models.Subject).filter(models.Subject.course_code == subject_code).first()
+            result = await db.execute(select(models.Subject).filter(models.Subject.course_code == subject_code))
+            subject = result.scalars().first()
             if not subject:
                 credit = item.get('Credit', '0')
                 subject = models.Subject(
@@ -303,19 +316,20 @@ class PortalScraper:
                     semester=semester,
                 )
                 db.add(subject)
-                db.flush()
+                await db.flush()
             
-            entry = db.query(models.StudentMark).filter(
+            result = await db.execute(select(models.StudentMark).filter(
                 models.StudentMark.student_id == student.id,
                 models.StudentMark.subject_id == subject.id,
                 models.StudentMark.semester == semester,
-            ).first()
+            ))
+            entry = result.scalars().first()
             if not entry:
                 entry = models.StudentMark(student_id=student.id, subject_id=subject.id, semester=semester)
                 db.add(entry)
             if grade:
                 entry.grade = grade
-            db.flush()
+            await db.flush()
 
         # 3. Process CIT Marks (Internal Percentage)
         test_field_map = {'Test_1': 'cit1_marks', 'Test_2': 'cit2_marks', 'Test_3': 'cit3_marks'}
@@ -330,14 +344,14 @@ class PortalScraper:
                 for item in entries:
                     if 'Subject' not in item or 'Marks' not in item:
                         continue
-                    subject = self._find_subject_by_name(item['Subject'], db, semester=semester)
+                    subject = await self._find_subject_by_name(item['Subject'], db, semester=semester)
                     if not subject:
                         # Fallback for truly unknown subjects
                         clean_name = re.sub(r'[^A-Z\s]', '', item['Subject'].upper()).strip()
                         code = f"CIT_{clean_name[:10].replace(' ', '_')}"
                         subject = models.Subject(course_code=code, name=item['Subject'], credits=0, semester=semester)
                         db.add(subject)
-                        db.flush()
+                        await db.flush()
 
                     code = subject.course_code
                     raw_val = item.get('Marks')
@@ -361,7 +375,7 @@ class PortalScraper:
                         pass
                     
                     # Store specifically for internal_marks table
-                    db.execute(text("""
+                    await db.execute(text("""
                         INSERT INTO internal_marks (roll_no, semester, test_number, subject_code, subject_title, percentage)
                         VALUES (:r, :sem, :test, :code, :title, :p)
                         ON CONFLICT DO NOTHING
@@ -374,17 +388,18 @@ class PortalScraper:
                         'p': mark_val
                     })
 # ORM Update
-                    entry = db.query(models.StudentMark).filter(
+                    result = await db.execute(select(models.StudentMark).filter(
                         models.StudentMark.student_id == student.id,
                         models.StudentMark.subject_id == subject.id,
                         models.StudentMark.semester == semester,
-                    ).first()
+                    ))
+                    entry = result.scalars().first()
                     if not entry:
                         entry = models.StudentMark(student_id=student.id, subject_id=subject.id, semester=semester)
                         db.add(entry)
                     if mark_val is not None:
                         setattr(entry, field_name, mark_val)
-                        db.flush()
+                        await db.flush()
                         
                         # Recalculate internal average (ignore -1/Absent for math average, but keep for record)
                         vals = [entry.cit1_marks, entry.cit2_marks, entry.cit3_marks]
@@ -401,7 +416,7 @@ class PortalScraper:
 
         # 4. Final Final Batch Insert into semester_grades
         for code, data in merged_grades.items():
-            db.execute(text("""
+            await db.execute(text("""
                 INSERT INTO semester_grades (roll_no, semester, subject_code, subject_title, grade, internal_marks, attempt, remarks)
                 VALUES (:r, :sem, :sc, :st, :g, :i, 1, 'Synced')
             """), {
@@ -410,12 +425,12 @@ class PortalScraper:
                 'i': round(data['internal_marks'], 2) if data['internal_marks'] is not None else None
             })
 
-    def _sync_attendance_to_db(self, student, detailed_attendance, db: Session):
+    async def _sync_attendance_to_db(self, student, detailed_attendance, db: AsyncSession):
         if not student:
             return
             
         # Clear existing summary to avoid duplicates during resync
-        db.execute(text("DELETE FROM attendance_summary WHERE roll_no = :r"), {'r': student.roll_no})
+        await db.execute(text("DELETE FROM attendance_summary WHERE roll_no = :r"), {'r': student.roll_no})
 
         semester_agg = {}
 
@@ -431,10 +446,11 @@ class PortalScraper:
                     att_date = datetime.strptime(day['Date'], '%d-%m-%Y').date()
                 except ValueError:
                     continue
-                existing = db.query(models.Attendance).filter(
+                result = await db.execute(select(models.Attendance).filter(
                     models.Attendance.student_id == student.id,
                     models.Attendance.date == att_date,
-                ).first()
+                ))
+                existing = result.scalars().first()
                 status_array = day.get('Status', [])
                 hours_per_day = int(day.get('HoursPerDay', 0)) if str(day.get('HoursPerDay', '')).isdigit() else len(status_array)
                 total_present = sum(1 for status in status_array if status.upper() in {'P', 'OD'})
@@ -465,7 +481,7 @@ class PortalScraper:
         
         # Sync to raw SQL attendance_summary
         for semester, counts in semester_agg.items():
-            db.execute(text("""
+            await db.execute(text("""
                 INSERT INTO attendance_summary (roll_no, semester, present_days, absent_days, leave_days)
                 VALUES (:r, :sem, :p, :a, :l)
             """), {
@@ -508,7 +524,7 @@ class PortalScraper:
             },
         }
 
-    def sync_payload_to_db(self, roll_no: str, dob: str, payload: dict, db: Session):
+    async def sync_payload_to_db(self, roll_no: str, dob: str, payload: dict, db: AsyncSession):
         """
         Generic method to sync a student data payload (from script.py JSON format) to the database.
         """
@@ -532,15 +548,15 @@ class PortalScraper:
         if not info:
             return None
 
-        student = self._sync_student_record(roll_no, dob, info, db)
+        student = await self._sync_student_record(roll_no, dob, info, db)
         if student:
-            self._sync_marks_to_db(student, marks, cit_marks, university_marks, db)
-            self._sync_attendance_to_db(student, detailed_attendance, db)
-            db.commit()
-            db.refresh(student)
+            await self._sync_marks_to_db(student, marks, cit_marks, university_marks, db)
+            await self._sync_attendance_to_db(student, detailed_attendance, db)
+            await db.commit()
+            await db.refresh(student)
         return student
 
-    def import_snapshot_file(self, file_path: Path, db: Session):
+    async def import_snapshot_file(self, file_path: Path, db: AsyncSession):
         with file_path.open('r', encoding='utf-8') as handle:
             payload = json.load(handle)
 
@@ -550,7 +566,7 @@ class PortalScraper:
         if not dob:
             raise ValueError(f'DOB not found in {file_path.name}')
 
-        student = self.sync_payload_to_db(roll_no, dob, payload, db)
+        student = await self.sync_payload_to_db(roll_no, dob, payload, db)
         if not student:
             raise ValueError(f'Invalid payload in {file_path.name}')
 
@@ -562,7 +578,7 @@ class PortalScraper:
             'file_name': file_path.name,
         }
 
-    def import_all_snapshots(self, db: Session):
+    async def import_all_snapshots(self, db: AsyncSession):
         if not self.snapshot_dir.exists():
             raise FileNotFoundError(f'Data directory not found: {self.snapshot_dir}')
 
@@ -570,9 +586,9 @@ class PortalScraper:
         errors = []
         for file_path in sorted(self.snapshot_dir.glob('*_data.json')):
             try:
-                imported.append(self.import_snapshot_file(file_path, db))
+                imported.append(await self.import_snapshot_file(file_path, db))
             except Exception as exc:
-                db.rollback()
+                await db.rollback()
                 errors.append({'file_name': file_path.name, 'error': str(exc)})
 
         return {
@@ -582,7 +598,7 @@ class PortalScraper:
             'errors': errors,
         }
 
-    def get_parent_portal_data(self, roll_no: str, dob: str, db: Session):
+    async def get_parent_portal_data(self, roll_no: str, dob: str, db: AsyncSession):
         started_at = time.time()
         warnings = []
 
@@ -603,12 +619,12 @@ class PortalScraper:
                 coe_results = []
             
             # Note: live_payload matches the tuple structure returned by script.get_parent_portal_info
-            student = self._sync_student_record(roll_no, dob, info, db)
-            self._sync_marks_to_db(student, marks, cit_marks, university_marks, db)
+            student = await self._sync_student_record(roll_no, dob, info, db)
+            await self._sync_marks_to_db(student, marks, cit_marks, university_marks, db)
             # Optionally handle coe_results here if there's a model for it. 
             # For now, coe_results might be redundant with university_marks if they overlap, 
             # but we can store them if needed.
-            self._sync_attendance_to_db(student, detailed_attendance, db)
+            await self._sync_attendance_to_db(student, detailed_attendance, db)
             
             # Since build_response needs coe_results (which we should add to its signature)
             return self._build_response(
@@ -631,9 +647,9 @@ class PortalScraper:
         if snapshot_payload:
             warnings.append(f'Live portal did not return student data. Loaded snapshot from {self.snapshot_dir}.')
             info, marks, detailed_attendance, attendance_summary, cit_marks, university_marks, coe_results = snapshot_payload
-            student = self._sync_student_record(roll_no, dob, info, db)
-            self._sync_marks_to_db(student, marks, cit_marks, university_marks, db)
-            self._sync_attendance_to_db(student, detailed_attendance, db)
+            student = await self._sync_student_record(roll_no, dob, info, db)
+            await self._sync_marks_to_db(student, marks, cit_marks, university_marks, db)
+            await self._sync_attendance_to_db(student, detailed_attendance, db)
             return self._build_response(
                 'cached',
                 'Live portal is unavailable right now, so the latest saved snapshot was loaded.',

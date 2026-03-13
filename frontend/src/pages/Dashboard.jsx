@@ -1,290 +1,80 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Award,
-  Book,
-  Calendar,
-  ChartNoAxesCombined,
-  Lock,
-  LogOut,
-  Loader2,
-  RefreshCw,
-  Save,
-  Search,
-  Shield,
-  TrendingUp,
-  User as UserIcon,
+import React, { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { 
+  Loader2, Sparkles, TrendingUp, CheckCircle2, AlertTriangle, Info, 
+  Award, Calendar, BadgeAlert, LogOut, RefreshCw, Save, Lock, Shield, Search 
 } from 'lucide-react';
+import { 
+  ResponsiveContainer, AreaChart, XAxis, YAxis, CartesianGrid, Tooltip, Area, 
+  BarChart, Bar, Cell, PieChart, Pie 
+} from 'recharts';
+import { useAuthStore } from '../store/authStore';
+import { useThemeStore } from '../store/themeStore';
+import { SectionTitle, StatCard, SortHeader } from '../components/DashboardComponents';
+import api from '../api/client';
+import { buildStudentIntelligence, fmt, num, CHART_COLORS } from '../services/academicService';
 
-const API_BASE = 'https://spark-backend-production-dcb3.up.railway.app';
-const GRADE_COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#38bdf8', '#f97316'];
-const TAB_OPTIONS = ['Overview', 'Analytics', 'Profile', 'Security'];
+// Redundant component definitions removed - imported from DashboardComponents
 
-const SortHeader = ({ label, field, currentSort, currentDir, onSort }) => {
-  const isActive = currentSort === field;
-  return (
-    <th onClick={() => onSort(field)} style={{ cursor: 'pointer', userSelect: 'none', padding: '0.75rem 0' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-        {label}
-        {isActive ? (
-          currentDir === 'asc' ? <ArrowUp size={14} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={14} style={{ color: 'var(--primary)' }} />
-        ) : (
-          <ArrowUpDown size={14} style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
-        )}
-      </div>
-    </th>
-  );
-};
-
-const Dashboard = ({ user, onLogout, onUserUpdate }) => {
-  const [data, setData] = useState(null);
-  const [analytics, setAnalytics] = useState(null);
-  const [profile, setProfile] = useState(user);
+const Dashboard = () => {
+  const { user, logout, updateUser } = useAuthStore();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('Overview');
-  const [syncing, setSyncing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [changingPassword, setChangingPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [syncMessage, setSyncMessage] = useState('');
-  const [syncMeta, setSyncMeta] = useState(null);
-  const [profileMessage, setProfileMessage] = useState('');
-  const [passwordMessage, setPasswordMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState('ALL');
-  const [profileForm, setProfileForm] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    batch: user?.batch || '',
-  });
-  const [passwordForm, setPasswordForm] = useState({
-    current_password: '',
-    new_password: '',
-    confirm_password: '',
-  });
+  const [semFilter, setSemFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState('semester');
   const [sortDir, setSortDir] = useState('desc');
-  const [semFilter, setSemFilter] = useState('ALL');
-  const [assessmentFilter, setAssessmentFilter] = useState('ALL');
-
-  const rollNo = user?.roll_no || user?.username;
-  const tabMap = useMemo(() => ({
-    overview: 'Overview',
-    analytics: 'Analytics',
-    profile: 'Profile',
-    security: 'Security',
-  }), []);
-
-  const authHeaders = useMemo(() => {
-    const token = localStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  }, [user]);
-
-  const handleApiResponse = async (response, fallbackMessage, emptyValue = {}) => {
-    const payload = await response.json().catch(() => emptyValue);
-    if (response.status === 401) {
-      onLogout();
-      throw new Error('Session expired. Please sign in again.');
-    }
-    if (!response.ok) {
-      throw new Error(payload.detail || fallbackMessage);
-    }
-    return payload;
-  };
-
-  const fetchDashboardData = async () => {
-    if (!rollNo) {
-      setError('Missing user information');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError('');
-      const [performanceResp, analyticsResp, meResp] = await Promise.all([
-        fetch(`${API_BASE}/student/performance/${rollNo}`, { headers: authHeaders }),
-        fetch(`${API_BASE}/student/analytics/${rollNo}`, { headers: authHeaders }),
-        fetch(`${API_BASE}/me`, { headers: authHeaders }),
-      ]);
-
-      const [performancePayload, analyticsPayload, mePayload] = await Promise.all([
-        handleApiResponse(performanceResp, 'Failed to load dashboard'),
-        handleApiResponse(analyticsResp, 'Failed to load analytics'),
-        handleApiResponse(meResp, 'Failed to load profile'),
-      ]);
-
-      setData(performancePayload);
-      setAnalytics(analyticsPayload);
-      setProfile(mePayload);
-      setProfileForm({
-        name: mePayload.name || '',
-        email: mePayload.email || '',
-        batch: mePayload.batch || '',
-      });
-      onUserUpdate(mePayload);
-    } catch (err) {
-      console.error(err);
-      setError(err.message || 'Unable to load dashboard right now.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const [showDobModal, setShowDobModal] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
   const [syncDob, setSyncDob] = useState(localStorage.getItem('syncDob') || '');
+  
+  const rollNo = user?.roll_no || user?.username;
 
-  const handleSyncInitiate = () => {
-    setShowDobModal(true);
-  };
+  // Data Fetching
+  const { data: performance, isLoading: loadingPerf } = useQuery({
+    queryKey: ['performance', rollNo],
+    queryFn: () => api.get(`/api/students/performance/${rollNo}`),
+    enabled: !!rollNo,
+  });
 
-  const handleSyncSubmit = async (e) => {
-    if (e) e.preventDefault();
-    if (!syncDob || syncDob.length !== 8) {
-      setSyncMessage('Please enter DOB in DDMMYYYY format (8 digits).');
-      return;
-    }
+  const { data: commandCenter, isLoading: loadingCommandCenter } = useQuery({
+    queryKey: ['student-command-center', rollNo],
+    queryFn: () => api.get(`/api/students/command-center/${rollNo}`),
+    enabled: !!rollNo,
+  });
 
-    setSyncing(true);
-    setSyncMessage('');
-    setShowDobModal(false);
-    try {
-      const resp = await fetch(`${API_BASE}/scrape/${rollNo}?dob=${encodeURIComponent(syncDob)}`, {
-        method: 'POST',
-        headers: authHeaders,
-      });
-      const payload = await handleApiResponse(resp, 'Sync failed');
+  const intelligence = useMemo(() => {
+    if (!user || !performance) return null;
+    return buildStudentIntelligence(user, performance);
+  }, [user, performance]);
 
+  // Mutations
+  const syncMutation = useMutation({
+    mutationFn: (dob) => api.post(`/api/students/scrape/${rollNo}?dob=${dob}`),
+    onSuccess: (data) => {
       localStorage.setItem('syncDob', syncDob);
-      localStorage.setItem('lastSyncMeta', JSON.stringify(payload.meta || null));
-      localStorage.setItem('lastSyncMessage', payload.message || 'Sync completed');
-      setSyncMeta(payload.meta || null);
-      setSyncMessage(payload.message || 'Sync completed');
-      await fetchDashboardData();
-    } catch (err) {
-      console.error(err);
-      setSyncMessage(err.message || 'Sync failed');
-    } finally {
-      setSyncing(false);
-    }
-  };
+      queryClient.invalidateQueries(['performance', rollNo]);
+      queryClient.invalidateQueries(['student-command-center', rollNo]);
+      setShowSyncModal(false);
+    },
+  });
 
-  const handleProfileSave = async (event) => {
-    event.preventDefault();
-    setSavingProfile(true);
-    setProfileMessage('');
-    try {
-      const resp = await fetch(`${API_BASE}/me`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify(profileForm),
-      });
-      const payload = await handleApiResponse(resp, 'Failed to update profile');
-      setProfile(payload);
-      onUserUpdate(payload);
-      setProfileMessage('Profile updated successfully.');
-    } catch (err) {
-      setProfileMessage(err.message || 'Failed to update profile.');
-    } finally {
-      setSavingProfile(false);
-    }
-  };
+  const updateProfileMutation = useMutation({
+    mutationFn: (data) => api.patch('/api/auth/me', data),
+    onSuccess: (data) => {
+      updateUser(data);
+      queryClient.invalidateQueries(['me']);
+    },
+  });
 
-  const handlePasswordSave = async (event) => {
-    event.preventDefault();
-    setChangingPassword(true);
-    setPasswordMessage('');
-    try {
-      if (passwordForm.new_password !== passwordForm.confirm_password) {
-        throw new Error('New password and confirmation do not match');
-      }
-      const resp = await fetch(`${API_BASE}/me/password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify({
-          current_password: passwordForm.current_password,
-          new_password: passwordForm.new_password,
-        }),
-      });
-      const payload = await handleApiResponse(resp, 'Failed to update password');
-      setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
-      setPasswordMessage(payload.message || 'Password updated successfully.');
-    } catch (err) {
-      setPasswordMessage(err.message || 'Failed to update password.');
-    } finally {
-      setChangingPassword(false);
-    }
-  };
+  const changePasswordMutation = useMutation({
+    mutationFn: (data) => api.post('/api/auth/me/password', data),
+  });
 
-  useEffect(() => {
-    fetchDashboardData();
-    const storedMeta = localStorage.getItem('lastSyncMeta');
-    const storedMessage = localStorage.getItem('lastSyncMessage');
-    if (storedMeta) {
-      try {
-        setSyncMeta(JSON.parse(storedMeta));
-      } catch {
-        localStorage.removeItem('lastSyncMeta');
-      }
-    }
-    if (storedMessage) {
-      setSyncMessage(storedMessage);
-    }
-  }, [rollNo]);
-
-  useEffect(() => {
-    const applyView = (view) => {
-      const nextTab = tabMap[String(view || '').toLowerCase()];
-      if (nextTab) {
-        setActiveTab(nextTab);
-      }
-    };
-
-    applyView(window.location.hash.replace('#', ''));
-
-    const handleStudentNav = (event) => applyView(event.detail);
-    const handleHashChange = () => applyView(window.location.hash.replace('#', ''));
-
-    window.addEventListener('student-view-change', handleStudentNav);
-    window.addEventListener('hashchange', handleHashChange);
-
-    return () => {
-      window.removeEventListener('student-view-change', handleStudentNav);
-      window.removeEventListener('hashchange', handleHashChange);
-    };
-  }, [tabMap]);
-
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    const nextHash = tab.toLowerCase();
-    if (window.location.hash.replace('#', '') !== nextHash) {
-      window.location.hash = nextHash;
-    }
-  };
-
-  const marks = data?.marks ?? [];
-  const attendance = data?.attendance ?? [];
-
+  // Derived Data
+  const marks = performance?.marks || [];
   const filteredMarks = useMemo(() => marks.filter((mark) => {
-    const courseCode = mark.subject?.course_code || '';
-    const subjectName = mark.subject?.name || '';
-    const matchesSearch = `${courseCode} ${subjectName}`.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = `${mark.subject?.course_code} ${mark.subject?.name}`.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesGrade = gradeFilter === 'ALL' || mark.grade === gradeFilter;
     const matchesSem = semFilter === 'ALL' || String(mark.semester) === semFilter;
     return matchesSearch && matchesGrade && matchesSem;
@@ -300,401 +90,542 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
       total: (m) => m.total_marks || 0,
     };
     const getter = fieldMap[sortBy] || fieldMap.semester;
-    const sorted = [...filteredMarks].sort((a, b) => {
+    return [...filteredMarks].sort((a, b) => {
       const valA = getter(a);
       const valB = getter(b);
       if (valA < valB) return sortDir === 'asc' ? -1 : 1;
       if (valA > valB) return sortDir === 'asc' ? 1 : -1;
       return 0;
     });
-    return sorted;
   }, [filteredMarks, sortBy, sortDir]);
 
-  const chartData = filteredMarks.map((mark) => ({
-    name: mark.subject?.course_code || `Sem ${mark.semester}`,
-    cit1: mark.cit1_marks ?? 0,
-    cit2: mark.cit2_marks ?? 0,
-    cit3: mark.cit3_marks ?? 0,
-  }));
+  const gradeDistribution = useMemo(() => {
+    const dist = {};
+    marks.forEach(m => {
+      dist[m.grade] = (dist[m.grade] || 0) + 1;
+    });
+    return Object.entries(dist).map(([name, value]) => ({ name, value }));
+  }, [marks]);
 
-  const attendanceChartData = attendance.slice(-8).map((entry) => ({
-    name: new Date(entry.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
-    present: entry.total_present ?? 0,
-  }));
-
-  const gradeDistribution = analytics?.grade_distribution?.map((item) => ({ name: item.grade, value: item.count })) || [];
-  const semesterTrend = analytics?.semester_performance?.map((item) => ({
-    semester: `Sem ${item.semester}`,
-    averageGradePoints: item.average_grade_points,
-    averageInternal: item.average_internal,
-  })) || [];
-
-  const averagePoints = analytics?.average_grade_points?.toFixed?.(2) ?? '0.00';
-  const averageInternal = analytics?.average_internal?.toFixed?.(2) ?? '0.00';
-  const attendancePct = analytics ? `${analytics.attendance.percentage.toFixed(0)}%` : 'N/A';
-  const backlogs = analytics?.total_backlogs ?? marks.filter((mark) => ['U', 'FAIL', 'W', 'I'].includes(mark.grade)).length;
-
-  if (loading) {
+  if (loadingPerf || loadingCommandCenter) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Loader2 className="spinner" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="animate-spin text-primary" size={40} />
+          <p className="text-muted-foreground animate-pulse">Initializing Intelligence Pulse...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="student-dashboard">
-      <div className="glass-panel student-hero">
-        <div className="student-hero-main">
-          <div className="hero-avatar-wrap">
-            <UserIcon color="white" size={26} />
-          </div>
-          <div className="hero-text-wrap">
-            <h1 className="hero-name-title">
-              {profile?.name || data?.name || 'Student'}
-              {profile?.rank && <span className="hero-rank-badge">Rank #{profile.rank}</span>}
-            </h1>
-            <p className="hero-meta-text">
-              Roll: {rollNo} | {profile?.reg_no ? `Reg: ${profile.reg_no} | ` : ''} {profile?.program_name || 'Program unavailable'} | {profile?.batch || data?.batch || 'Batch unavailable'}
-            </p>
-          </div>
+    <div className="container-premium pb-20 animate-in fade-in duration-700">
+      {/* Header Section */}
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+        <div>
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-3">
+            <Sparkles size={14} /> Student Dashboard
+          </span>
+          <h1 className="text-4xl font-extrabold tracking-tight mb-2">
+            Welcome, <span className="text-gradient">{user?.name || 'Academic'}</span>
+          </h1>
+          <p className="text-muted-foreground max-w-2xl">
+            {user?.program_name} • Batch {user?.batch} • Roll No: <span className="text-foreground font-semibold">{rollNo}</span>
+          </p>
         </div>
-        <div className="student-hero-actions">
-          <button className="btn-primary" onClick={handleSyncInitiate} disabled={syncing} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }}>
-            {syncing ? <Loader2 className="spinner" /> : <RefreshCw size={18} />} Sync Data
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setShowSyncModal(true)}
+            disabled={syncMutation.isPending}
+            className="btn-primary"
+          >
+            {syncMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
+            <span>Sync Records</span>
           </button>
-          <button className="btn-primary" onClick={onLogout} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }}>
-            <LogOut size={18} /> Sign Out
+          <button onClick={logout} className="p-2.5 rounded-xl border border-border bg-card hover:bg-muted transition-colors text-muted-foreground">
+            <LogOut size={20} />
           </button>
         </div>
-      </div>
+      </header>
 
-      <div className="student-tabs scroll-x">
-        {TAB_OPTIONS.map((tab) => (
+      {/* Tabs */}
+      <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-2xl w-fit mb-8">
+        {['Overview', 'Performance', 'Profile', 'Security'].map((tab) => (
           <button
             key={tab}
-            className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => handleTabChange(tab)}
+            onClick={() => setActiveTab(tab)}
+            className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
+              activeTab === tab 
+                ? 'bg-card text-foreground shadow-sm ring-1 ring-border' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
             {tab}
           </button>
         ))}
       </div>
 
-      {error ? <div className="glass-panel" style={{ padding: '1rem 1.5rem', marginBottom: '1rem' }}>{error}</div> : null}
-      {profile?.is_initial_password ? (
-        <div className="glass-panel" style={{ padding: '1rem 1.5rem', marginBottom: '1rem' }}>
-          <strong>Security notice:</strong> You are still using your initial password. Change it from the `Security` tab for better account safety.
-        </div>
-      ) : null}
-      {syncMessage ? (
-        <div className="glass-panel" style={{ padding: '1rem 1.5rem', marginBottom: '1.5rem' }}>
-          <strong>Sync status:</strong> {syncMessage}
-          {syncMeta ? <div style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Duration: {syncMeta.duration_seconds}s{syncMeta.used_cached_data ? ' | Using cached data' : ''}</div> : null}
-          {syncMeta?.warnings?.length ? <div style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>{syncMeta.warnings[0]}</div> : null}
-        </div>
-      ) : null}
-
-      {activeTab === 'Overview' ? (
-        <>
-          <div className="student-kpi-grid">
-            {[
-              { icon: Award, label: 'Average Grade Points', value: averagePoints, color: '#6366f1' },
-              { icon: Calendar, label: 'Attendance', value: attendancePct, color: '#ec4899' },
-              { icon: TrendingUp, label: 'Internal Avg', value: averageInternal, color: '#10b981' },
-              { icon: Book, label: 'Backlogs', value: String(backlogs), color: '#f59e0b' },
-            ].map((stat) => (
-              <div key={stat.label} className="glass-panel kpi-card">
-                <div className="kpi-card-content">
-                  <stat.icon color={stat.color} size={28} />
-                  <div className="kpi-card-text">
-                    <p className="kpi-label">{stat.label}</p>
-                    <h3 className="kpi-value">{stat.value}</h3>
+      {activeTab === 'Overview' && (
+        <div className="bento-grid">
+          {/* Intelligence Spotlight */}
+          <div className="bento-card col-span-12 lg:col-span-8 flex flex-col justify-between">
+            <div>
+              <SectionTitle 
+                eyebrow="Intelligence Pulse" 
+                title="Academic Insight" 
+                copy="Automated observations across your semester trajectory."
+              />
+              <div className="grid md:grid-cols-2 gap-6 mt-8">
+                <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10 flex gap-4">
+                  <div className="p-3 rounded-xl bg-primary/10 text-primary h-fit">
+                    <TrendingUp size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold mb-1">Predicted Path</h4>
+                    <p className="text-sm text-muted-foreground mb-2">Estimated CGPA for next cycle:</p>
+                    <span className="text-2xl font-black text-primary">{num(intelligence?.predictedGpa)}</span>
+                  </div>
+                </div>
+                <div className={`p-5 rounded-2xl border flex gap-4 ${
+                  intelligence?.riskLevel === 'Low' ? 'bg-emerald-500/5 border-emerald-500/10' : 'bg-rose-500/5 border-rose-500/10'
+                }`}>
+                  <div className={`p-3 rounded-xl h-fit ${
+                    intelligence?.riskLevel === 'Low' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'
+                  }`}>
+                    {intelligence?.riskLevel === 'Low' ? <CheckCircle2 size={24} /> : <AlertTriangle size={24} />}
+                  </div>
+                  <div>
+                    <h4 className="font-bold mb-1">Risk Assessment</h4>
+                    <p className="text-sm text-muted-foreground mb-2">{commandCenter?.risk?.risk_level || intelligence?.riskLevel} Intensity | Index: {commandCenter?.risk?.risk_score || intelligence?.riskScore}</p>
+                    <p className="text-xs font-medium text-muted-foreground">{intelligence?.reasons[0] || 'Clear trajectory maintained.'}</p>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-
-          <div className="student-chart-grid">
-            <div className="glass-panel" style={{ padding: '1.8rem' }}>
-              <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>CIT Marks Performance</h2>
-              <div style={{ height: '300px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} />
-                    <YAxis stroke="var(--text-muted)" fontSize={12} />
-                    <Tooltip contentStyle={{ background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '10px' }} />
-                    <Bar dataKey="cit1" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="cit2" fill="#ec4899" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="cit3" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
             </div>
-
-            <div className="glass-panel" style={{ padding: '1.8rem' }}>
-              <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>Attendance Trend</h2>
-              <div style={{ height: '300px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={attendanceChartData}>
-                    <defs>
-                      <linearGradient id="attendanceFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} />
-                    <YAxis stroke="var(--text-muted)" fontSize={12} />
-                    <Tooltip contentStyle={{ background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '10px' }} />
-                    <Area type="monotone" dataKey="present" stroke="#38bdf8" fillOpacity={1} fill="url(#attendanceFill)" strokeWidth={3} />
-                  </AreaChart>
-                </ResponsiveContainer>
+            
+            <div className="mt-8 pt-8 border-t border-border/50">
+              <div className="flex items-center justify-between mb-3 text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                <span>Placement Readiness</span>
+                <span>{intelligence?.placementReadiness}%</span>
               </div>
+              <div className="h-3 bg-muted rounded-full overflow-hidden p-0.5 ring-1 ring-border">
+                <div 
+                  className="h-full rounded-full transition-all duration-1000 ease-out bg-gradient-to-r from-primary to-accent shadow-[0_0_12px_-2px_rgba(var(--primary-rgb),0.5)]"
+                  style={{ width: `${intelligence?.placementReadiness}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-3 italic">Calculated via CGPA stability, attendance thresholds, and technical breadth.</p>
             </div>
           </div>
 
-          <div className="glass-panel" style={{ padding: '1.5rem 2rem' }}>
-            <div className="student-toolbar">
-              <h2 style={{ fontSize: '1.15rem' }}>Subject Explorer</h2>
-              <div className="student-toolbar-controls">
-                <div className="student-search">
-                  <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input className="input-field" style={{ paddingLeft: '36px', width: '100%' }} placeholder="Search subject or code" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          {/* Quick Metrics */}
+          <div className="col-span-12 lg:col-span-4 grid grid-cols-2 gap-4">
+            <StatCard icon={Award} label="Avg Grade Points" value={num(commandCenter?.analytics?.average_grade_points ?? intelligence?.averageGpa)} accent="#6366f1" subValue="Current CGPA" trend={commandCenter?.metrics?.[0]?.trend ?? 0} />
+            <StatCard icon={Calendar} label="Attendance" value={`${fmt(commandCenter?.analytics?.attendance?.percentage ?? intelligence?.attendance)}%`} accent="#ec4899" />
+            <StatCard icon={BadgeAlert} label="Active Backlogs" value={fmt(commandCenter?.analytics?.total_backlogs ?? intelligence?.failCount, '0')} accent="#f59e0b" />
+            <StatCard icon={TrendingUp} label="Performance" value={intelligence?.trendDirection.toUpperCase()} accent="#10b981" subValue={`Rank ${commandCenter?.class_rank || user?.rank || '-'}`} />
+          </div>
+
+          {/* Charts Row */}
+          <div className="bento-card col-span-12 lg:col-span-7">
+            <SectionTitle title="Performance Timeline" copy="Semester-wise GPA trajectory and historical growth." />
+            <div className="h-80 w-full mt-6">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={intelligence?.semesterTrend}>
+                  <defs>
+                    <linearGradient id="colorGpa" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsla(var(--border), 0.3)" />
+                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} domain={[0, 10]} />
+                  <Tooltip 
+                    contentStyle={{ border: '1px solid var(--border)', borderRadius: '12px', background: 'var(--card)', boxShadow: '0 8px 16px -4px rgba(0,0,0,0.1)' }}
+                    itemStyle={{ fontSize: '12px', fontWeight: '600' }}
+                  />
+                  <Area type="monotone" dataKey="averageGradePoints" name="GPA" stroke="var(--primary)" strokeWidth={4} fillOpacity={1} fill="url(#colorGpa)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bento-card col-span-12 lg:col-span-5">
+            <SectionTitle title="Assessment Mastery" copy="Consistency across technical internal evaluations." />
+            <div className="h-80 w-full mt-6">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={marks.slice(-6)}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsla(var(--border), 0.3)" />
+                  <XAxis dataKey="subject.course_code" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
+                  <Tooltip 
+                    contentStyle={{ border: '1px solid var(--border)', borderRadius: '12px', background: 'var(--card)' }}
+                  />
+                  <Bar dataKey="internal_marks" name="Internal Marks" radius={[6, 6, 0, 0]} fill="var(--primary)">
+                    {marks.slice(-6).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.internal_marks >= 40 ? 'var(--primary)' : 'var(--destructive)'} opacity={0.8} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bento-card col-span-12 lg:col-span-6">
+            <SectionTitle title="Recommended Actions" copy="Priority steps generated from your current academic signals." />
+            <div className="space-y-3 mt-6">
+              {commandCenter?.recommended_actions?.map((action) => (
+                <div key={action.title} className="flex items-start gap-4 rounded-2xl border border-border bg-card/60 p-4">
+                  <div className={`mt-0.5 rounded-xl p-2 ${
+                    action.tone === 'critical'
+                      ? 'bg-destructive/10 text-destructive'
+                      : action.tone === 'warning'
+                        ? 'bg-amber-500/10 text-amber-500'
+                        : action.tone === 'positive'
+                          ? 'bg-emerald-500/10 text-emerald-500'
+                          : 'bg-primary/10 text-primary'
+                  }`}>
+                    {action.tone === 'critical' ? <AlertTriangle size={16} /> : action.tone === 'positive' ? <CheckCircle2 size={16} /> : <Info size={16} />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">{action.title}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{action.detail}</p>
+                  </div>
                 </div>
-                <select className="input-field" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}>
-                  <option value="ALL">All grades</option>
-                  {[...new Set(marks.map((mark) => mark.grade).filter(Boolean))].sort().map((grade) => (
-                    <option key={grade} value={grade}>{grade}</option>
-                  ))}
-                </select>
-                <select className="input-field" value={semFilter} onChange={(e) => setSemFilter(e.target.value)}>
+              ))}
+            </div>
+          </div>
+
+          <div className="bento-card col-span-12 lg:col-span-6">
+            <SectionTitle title="Recent Result Flow" copy="Latest result entries and attempt history." />
+            <div className="space-y-3 mt-6">
+              {commandCenter?.recent_results?.slice(0, 6).map((item, index) => (
+                <div key={`${item.subject_code || 'subject'}-${index}`} className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card/60 p-4">
+                  <div>
+                    <p className="text-sm font-bold">{item.subject_title || item.subject_code}</p>
+                    <p className="text-xs text-muted-foreground">Sem {item.semester || '-'} | Attempt {item.attempt || 1}</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 text-right text-xs">
+                    <div>
+                      <p className="font-black">{fmt(item.grade)}</p>
+                      <p className="text-muted-foreground">Grade</p>
+                    </div>
+                    <div>
+                      <p className="font-black">{fmt(item.internal_marks)}</p>
+                      <p className="text-muted-foreground">Internal</p>
+                    </div>
+                    <div>
+                      <p className="font-black">{fmt(item.marks)}</p>
+                      <p className="text-muted-foreground">Marks</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bento-card col-span-12 lg:col-span-6">
+            <SectionTitle title="Semester Focus" copy="Your most recent semester snapshots." />
+            <div className="space-y-3 mt-6">
+              {commandCenter?.semester_focus?.map((item) => (
+                <div key={item.semester} className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card/60 p-4">
+                  <div>
+                    <p className="text-sm font-bold">Semester {item.semester}</p>
+                    <p className="text-xs text-muted-foreground">{item.subject_count} subjects | {item.backlog_count} backlog(s)</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-right text-xs">
+                    <div>
+                      <p className="font-black">{num(item.average_grade_points)}</p>
+                      <p className="text-muted-foreground">SGPA</p>
+                    </div>
+                    <div>
+                      <p className="font-black">{num(item.average_internal)}</p>
+                      <p className="text-muted-foreground">Internal Avg</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bento-card col-span-12 lg:col-span-6">
+            <SectionTitle title="Record Health" copy="Keep your record complete for reviews, scholarships, and placements." />
+            <div className="mt-6 space-y-4">
+              <div className="rounded-2xl border border-border bg-card/60 p-5">
+                <div className="flex items-center justify-between text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                  <span>Profile Completion</span>
+                  <span>{commandCenter?.record_health?.completion_percentage ?? 0}%</span>
+                </div>
+                <div className="mt-4 h-3 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent" style={{ width: `${commandCenter?.record_health?.completion_percentage ?? 0}%` }} />
+                </div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-2xl border border-border bg-card/60 p-4">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Available</p>
+                  <p className="mt-3 text-sm">{commandCenter?.record_health?.available_sections?.join(', ') || 'No sections yet'}</p>
+                </div>
+                <div className="rounded-2xl border border-border bg-card/60 p-4">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Missing</p>
+                  <p className="mt-3 text-sm">{commandCenter?.record_health?.missing_sections?.join(', ') || 'No gaps detected'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'Performance' && (
+        <div className="space-y-6">
+          <div className="bento-card">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+              <SectionTitle title="Subject Repository" copy="Full academic record with advanced filtering and drill-down." />
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative group">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={16} />
+                  <input 
+                    className="pl-10 pr-4 py-2 bg-muted/50 rounded-xl border border-border focus:ring-2 ring-primary/20 outline-none transition-all w-64"
+                    placeholder="Search subject..." 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)} 
+                  />
+                </div>
+                <select className="px-4 py-2 bg-muted/50 rounded-xl border border-border outline-none text-sm" value={semFilter} onChange={(e) => setSemFilter(e.target.value)}>
                   <option value="ALL">All Semesters</option>
-                  {[...new Set(marks.map((mark) => String(mark.semester)))].sort().map((sem) => (
-                    <option key={sem} value={sem}>Sem {sem}</option>
-                  ))}
+                  {[...new Set(marks.map(m => String(m.semester)))].sort().map(s => <option key={s} value={s}>Sem {s}</option>)}
                 </select>
-                <select className="input-field" value={assessmentFilter} onChange={(e) => setAssessmentFilter(e.target.value)}>
-                  <option value="ALL">All Marks</option>
-                  <option value="CIT1">CIT 1</option>
-                  <option value="CIT2">CIT 2</option>
-                  <option value="CIT3">CIT 3</option>
+                <select className="px-4 py-2 bg-muted/50 rounded-xl border border-border outline-none text-sm" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}>
+                  <option value="ALL">All Grades</option>
+                  {[...new Set(marks.map(m => m.grade))].filter(Boolean).sort().map(g => <option key={g} value={g}>{g}</option>)}
                 </select>
               </div>
             </div>
-            <div className="student-table-wrap">
-              <table className="student-subject-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+
+            <div className="overflow-x-auto rounded-2xl border border-border">
+              <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
-                    <SortHeader label="Code" field="code" currentSort={sortBy} currentDir={sortDir} onSort={(f) => { setSortDir(sortBy === f ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc'); setSortBy(f); }} />
-                    <SortHeader label="Subject" field="subject" currentSort={sortBy} currentDir={sortDir} onSort={(f) => { setSortDir(sortBy === f ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc'); setSortBy(f); }} />
-                    <SortHeader label="Semester" field="semester" currentSort={sortBy} currentDir={sortDir} onSort={(f) => { setSortDir(sortBy === f ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc'); setSortBy(f); }} />
-                    <SortHeader label="Grade" field="grade" currentSort={sortBy} currentDir={sortDir} onSort={(f) => { setSortDir(sortBy === f ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc'); setSortBy(f); }} />
-                    <SortHeader label={assessmentFilter === 'ALL' ? 'Internal' : assessmentFilter} field="internal" currentSort={sortBy} currentDir={sortDir} onSort={(f) => { setSortDir(sortBy === f ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc'); setSortBy(f); }} />
-                    <SortHeader label="Total" field="total" currentSort={sortBy} currentDir={sortDir} onSort={(f) => { setSortDir(sortBy === f ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc'); setSortBy(f); }} />
+                  <tr className="bg-muted/30">
+                    <SortHeader label="Code" field="code" currentSort={sortBy} currentDir={sortDir} onSort={setSortBy} />
+                    <SortHeader label="Subject" field="subject" currentSort={sortBy} currentDir={sortDir} onSort={setSortBy} />
+                    <SortHeader label="Sem" field="semester" currentSort={sortBy} currentDir={sortDir} onSort={setSortBy} />
+                    <SortHeader label="Grade" field="grade" currentSort={sortBy} currentDir={sortDir} onSort={setSortBy} />
+                    <SortHeader label="Internal" field="internal" currentSort={sortBy} currentDir={sortDir} onSort={setSortBy} />
+                    <SortHeader label="Total" field="total" currentSort={sortBy} currentDir={sortDir} onSort={setSortBy} />
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-border">
                   {sortedMarks.map((mark) => (
-                    <tr key={mark.id} style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                      <td data-label="Code" style={{ padding: '0.85rem 0' }}>{mark.subject?.course_code || '-'}</td>
-                      <td data-label="Subject" style={{ padding: '0.85rem 0' }}>{mark.subject?.name || '-'}</td>
-                      <td data-label="Semester" style={{ padding: '0.85rem 0' }}>{mark.semester}</td>
-                      <td data-label="Grade" style={{ padding: '0.85rem 0' }}>{mark.grade || '-'}</td>
-                      <td data-label={assessmentFilter === 'ALL' ? 'Internal' : assessmentFilter} style={{ padding: '0.85rem 0' }}>
-                        {assessmentFilter === 'ALL' 
-                          ? (mark.internal_marks ?? '-') 
-                          : (assessmentFilter === 'CIT1' ? mark.cit1_marks : (assessmentFilter === 'CIT2' ? mark.cit2_marks : mark.cit3_marks)) ?? '-'}
+                    <tr key={mark.id} className="hover:bg-muted/20 transition-colors group">
+                      <td className="px-4 py-4 font-mono font-bold text-primary">{mark.subject?.course_code}</td>
+                      <td className="px-4 py-4 font-medium">{mark.subject?.name}</td>
+                      <td className="px-4 py-4">
+                        <span className="px-2 py-1 rounded-md bg-muted text-xs font-bold text-muted-foreground">Sem {mark.semester}</span>
                       </td>
-                      <td data-label="Total" style={{ padding: '0.85rem 0' }}>{mark.total_marks ?? '-'}</td>
+                      <td className="px-4 py-4">
+                        <span className={`font-black ${['U', 'F', 'FAIL'].includes(mark.grade) ? 'text-destructive' : 'text-foreground'}`}>
+                          {mark.grade || '-'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-muted-foreground">{mark.internal_marks || '-'}</td>
+                      <td className="px-4 py-4 font-bold">{mark.total_marks || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           </div>
-        </>
-      ) : null}
-
-      {activeTab === 'Analytics' ? (
-        <div className="student-analytics-grid">
-          <div className="glass-panel" style={{ padding: '1.8rem' }}>
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>Grade Distribution</h2>
-            <div style={{ height: '280px' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={gradeDistribution} dataKey="value" nameKey="name" outerRadius={100} label>
-                    {gradeDistribution.map((entry, index) => <Cell key={entry.name} fill={GRADE_COLORS[index % GRADE_COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '10px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="glass-panel" style={{ padding: '1.8rem' }}>
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>Semester Trend</h2>
-            <div style={{ height: '280px' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={semesterTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                  <XAxis dataKey="semester" stroke="var(--text-muted)" />
-                  <YAxis stroke="var(--text-muted)" />
-                  <Tooltip contentStyle={{ background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '10px' }} />
-                  <Bar dataKey="averageGradePoints" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="averageInternal" fill="#10b981" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="glass-panel" style={{ padding: '1.8rem' }}>
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>Strength Areas</h2>
-            <div style={{ display: 'grid', gap: '0.9rem' }}>
-              {(analytics?.strength_subjects || []).map((item) => (
-                <div key={`${item.course_code}-${item.semester}`} className="metric-row">
-                  <div>
-                    <strong>{item.course_code}</strong>
-                    <p style={{ color: 'var(--text-muted)' }}>{item.subject}</p>
-                  </div>
-                  <span>{item.grade} | {item.score}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="glass-panel" style={{ padding: '1.8rem' }}>
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>Risk Watchlist</h2>
-            <div style={{ display: 'grid', gap: '0.9rem' }}>
-              {(analytics?.risk_subjects || []).length ? (analytics.risk_subjects || []).map((item) => (
-                <div key={`${item.course_code}-${item.semester}`} className="metric-row">
-                  <div>
-                    <strong>{item.course_code}</strong>
-                    <p style={{ color: 'var(--text-muted)' }}>{item.risk_reason}</p>
-                  </div>
-                  <span>{item.grade} | {item.internal_marks}</span>
-                </div>
-              )) : <p style={{ color: 'var(--text-muted)' }}>No current risk subjects detected.</p>}
-            </div>
-          </div>
-
-          <div className="glass-panel" style={{ padding: '1.8rem' }}>
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>Attendance Insights</h2>
-            <div style={{ display: 'grid', gap: '0.9rem' }}>
-              <div className="metric-row"><span>Recent full-attendance streak</span><strong>{analytics?.attendance?.recent_streak_days ?? 0} days</strong></div>
-              <div className="metric-row"><span>Absent / partial days</span><strong>{analytics?.attendance?.absent_days ?? 0}</strong></div>
-              <div className="metric-row"><span>Total present hours</span><strong>{analytics?.attendance?.total_present ?? 0}</strong></div>
-              <div className="metric-row"><span>Total working hours</span><strong>{analytics?.attendance?.total_hours ?? 0}</strong></div>
-            </div>
-          </div>
-
-          <div className="glass-panel" style={{ padding: '1.8rem' }}>
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>Analyst Notes</h2>
-            <div style={{ display: 'grid', gap: '0.85rem', color: 'var(--text-muted)' }}>
-              <p><ChartNoAxesCombined size={16} style={{ verticalAlign: 'middle', marginRight: '0.5rem' }} />Semester momentum is strongest where internal marks stay above 80.</p>
-              <p><Shield size={16} style={{ verticalAlign: 'middle', marginRight: '0.5rem' }} />Use the risk watchlist to prioritise subjects before the next assessment cycle.</p>
-              <p><TrendingUp size={16} style={{ verticalAlign: 'middle', marginRight: '0.5rem' }} />Refresh sync after portal updates to keep CIT and attendance analytics current.</p>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {activeTab === 'Profile' ? (
-        <div className="student-form-grid">
-          <form className="glass-panel" style={{ padding: '1.8rem' }} onSubmit={handleProfileSave}>
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>Edit Profile</h2>
-            <div className="input-group">
-              <label>Name</label>
-              <input className="input-field" value={profileForm.name} onChange={(e) => setProfileForm((prev) => ({ ...prev, name: e.target.value }))} required />
-            </div>
-            <div className="input-group">
-              <label>Email</label>
-              <input className="input-field" type="email" value={profileForm.email} onChange={(e) => setProfileForm((prev) => ({ ...prev, email: e.target.value }))} />
-            </div>
-            <div className="input-group">
-              <label>Batch</label>
-              <input className="input-field" value={profileForm.batch} onChange={(e) => setProfileForm((prev) => ({ ...prev, batch: e.target.value }))} />
-            </div>
-            <button className="btn-primary" type="submit" disabled={savingProfile}>
-              {savingProfile ? <Loader2 className="spinner" /> : <Save size={18} />} Save Profile
-            </button>
-            {profileMessage ? <p style={{ color: 'var(--text-muted)', marginTop: '1rem' }}>{profileMessage}</p> : null}
-          </form>
-
-          <div className="glass-panel" style={{ padding: '1.8rem' }}>
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>Account Snapshot</h2>
-            <div style={{ display: 'grid', gap: '0.9rem' }}>
-              <div className="metric-row"><span>Username</span><strong>{profile?.username || '-'}</strong></div>
-              <div className="metric-row"><span>Roll Number</span><strong>{profile?.roll_no || '-'}</strong></div>
-              <div className="metric-row"><span>Register Number</span><strong>{profile?.reg_no || '-'}</strong></div>
-              <div className="metric-row"><span>Program</span><strong>{profile?.program_name || '-'}</strong></div>
-              <div className="metric-row"><span>Current Semester</span><strong>{profile?.current_semester || '-'}</strong></div>
-              <div className="metric-row"><span>Initial Password</span><strong>{profile?.is_initial_password ? 'Yes' : 'No'}</strong></div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {activeTab === 'Security' ? (
-        <div className="student-form-grid">
-          <form className="glass-panel" style={{ padding: '1.8rem' }} onSubmit={handlePasswordSave}>
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>Change Password</h2>
-            <div className="input-group">
-              <label>Current Password</label>
-              <input className="input-field" type="password" value={passwordForm.current_password} onChange={(e) => setPasswordForm((prev) => ({ ...prev, current_password: e.target.value }))} required />
-            </div>
-            <div className="input-group">
-              <label>New Password</label>
-              <input className="input-field" type="password" value={passwordForm.new_password} onChange={(e) => setPasswordForm((prev) => ({ ...prev, new_password: e.target.value }))} required />
-            </div>
-            <div className="input-group">
-              <label>Confirm New Password</label>
-              <input className="input-field" type="password" value={passwordForm.confirm_password} onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirm_password: e.target.value }))} required />
-            </div>
-            <button className="btn-primary" type="submit" disabled={changingPassword}>
-              {changingPassword ? <Loader2 className="spinner" /> : <Lock size={18} />} Update Password
-            </button>
-            {passwordMessage ? <p style={{ color: 'var(--text-muted)', marginTop: '1rem' }}>{passwordMessage}</p> : null}
-          </form>
-
-          <div className="glass-panel" style={{ padding: '1.8rem' }}>
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.15rem' }}>Security Guidance</h2>
-            <div style={{ display: 'grid', gap: '0.9rem', color: 'var(--text-muted)' }}>
-              <p>Choose a password that is at least 6 characters long and not based on your DOB.</p>
-              <p>After changing your password, use the new password for the next login and future sync sessions.</p>
-              <p>If sync still requires DOB for the external portal, you can continue entering it when prompted without changing your account password here.</p>
-            </div>
-          </div>
-        </div>
-      ) : null}
-      {showDobModal && (
-        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-          <div className="glass-panel" style={{ padding: '2rem', maxWidth: '400px', width: '100%' }}>
-            <h2 style={{ marginBottom: '1rem' }}>Verify Identity</h2>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>
-              Enter your Date of Birth in <strong>DDMMYYYY</strong> format to authenticate with the external portal and fetch your latest academic records.
-            </p>
-            <form onSubmit={handleSyncSubmit}>
-              <div className="input-group" style={{ marginBottom: '1.5rem' }}>
-                <label>Date of Birth (DDMMYYYY)</label>
-                <input
-                  autoFocus
-                  className="input-field"
-                  maxLength={8}
-                  placeholder="e.g. 15082000"
-                  type="text"
-                  value={syncDob}
-                  onChange={(e) => setSyncDob(e.target.value.replace(/\D/g, ''))}
-                />
+          
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="bento-card">
+              <SectionTitle title="Subject Mastery Distribution" />
+              <div className="h-64 mt-4 text-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={gradeDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={8}>
+                      {gradeDistribution.map((entry, index) => <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ border: 'none', borderRadius: '12px', background: 'var(--card)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-              <div className="modal-actions">
-                <button type="button" className="btn-primary" onClick={() => setShowDobModal(false)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }}>
+            </div>
+            <div className="bento-card overflow-hidden">
+               <SectionTitle title="Intelligence: Weak Areas" />
+               <div className="space-y-3 mt-6">
+                 {intelligence?.weaknesses?.length ? intelligence.weaknesses.map((w, i) => (
+                   <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-destructive/5 border border-destructive/10">
+                     <div className="p-2 rounded-lg bg-destructive/10 text-destructive"><Info size={16} /></div>
+                     <div>
+                       <p className="text-sm font-bold">{w.subject_title || w.subject_code}</p>
+                       <p className="text-xs text-muted-foreground">Recorded {w.grade_point} GP in Sem {w.semester}. Refinement critical.</p>
+                     </div>
+                   </div>
+                 )) : (
+                   <p className="text-muted-foreground text-sm italic">No significant academic risks detected.</p>
+                 )}
+               </div>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="bento-card overflow-hidden">
+              <SectionTitle title="Strength Subjects" copy="Subjects where your current signal is strongest." />
+              <div className="space-y-3 mt-6">
+                {commandCenter?.analytics?.strength_subjects?.map((item, index) => (
+                  <div key={`${item.course_code}-${index}`} className="flex items-center justify-between rounded-2xl border border-border bg-card/60 p-4">
+                    <div>
+                      <p className="text-sm font-bold">{item.subject}</p>
+                      <p className="text-xs text-muted-foreground">{item.course_code} | Sem {item.semester}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-black">{item.score}</p>
+                      <p className="text-xs text-muted-foreground">Composite score</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bento-card overflow-hidden">
+              <SectionTitle title="Priority Watchlist" copy="Subjects that need the earliest attention." />
+              <div className="space-y-3 mt-6">
+                {commandCenter?.analytics?.risk_subjects?.length ? commandCenter.analytics.risk_subjects.map((item, index) => (
+                  <div key={`${item.course_code}-${index}`} className="flex items-center justify-between rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+                    <div>
+                      <p className="text-sm font-bold">{item.subject}</p>
+                      <p className="text-xs text-muted-foreground">{item.course_code} | {item.risk_reason}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-black">{item.grade}</p>
+                      <p className="text-xs text-muted-foreground">Grade</p>
+                    </div>
+                  </div>
+                )) : (
+                  <p className="text-muted-foreground text-sm italic">No urgent watchlist subjects detected.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'Profile' && (
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 bento-card">
+            <SectionTitle title="Profile Information" copy="Update your public profile and academic identifiers." />
+            <form className="mt-8 space-y-6" onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target);
+              updateProfileMutation.mutate(Object.fromEntries(formData));
+            }}>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-muted-foreground">Full Name</label>
+                  <input name="name" className="input-field w-full" defaultValue={user?.name} required />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-muted-foreground">Email Address</label>
+                  <input name="email" type="email" className="input-field w-full" defaultValue={user?.email} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-muted-foreground">Batch</label>
+                  <input name="batch" className="input-field w-full" defaultValue={user?.batch} />
+                </div>
+              </div>
+              <button type="submit" disabled={updateProfileMutation.isPending} className="btn-primary w-fit">
+                {updateProfileMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                <span>Save Profile Changes</span>
+              </button>
+            </form>
+          </div>
+          <div className="bento-card">
+            <SectionTitle title="Account Status" />
+            <div className="mt-8 space-y-4">
+              <div className="flex justify-between p-3 rounded-xl bg-muted/50">
+                <span className="text-muted-foreground">Reg Number</span>
+                <span className="font-bold">{user?.reg_no || '-'}</span>
+              </div>
+              <div className="flex justify-between p-3 rounded-xl bg-muted/50">
+                <span className="text-muted-foreground">Program</span>
+                <span className="font-bold">{user?.program_name || '-'}</span>
+              </div>
+              <div className="flex justify-between p-3 rounded-xl bg-muted/50">
+                <span className="text-muted-foreground">Current Sem</span>
+                <span className="font-bold">{user?.current_semester || '-'}</span>
+              </div>
+              <div className="flex justify-between p-3 rounded-xl bg-muted/50">
+                <span className="text-muted-foreground">Class Rank</span>
+                <span className="font-bold">{commandCenter?.class_rank || user?.rank || '-'}</span>
+              </div>
+              <div className="flex justify-between p-3 rounded-xl bg-muted/50">
+                <span className="text-muted-foreground">Risk Level</span>
+                <span className="font-bold">{commandCenter?.risk?.risk_level || intelligence?.riskLevel || '-'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'Security' && (
+        <div className="max-w-2xl mx-auto bento-card">
+          <SectionTitle title="Security Protocols" copy="Maintain the integrity of your academic command center." />
+          <form className="mt-8 space-y-6" onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            if (data.new_password !== data.confirm_password) return alert('Passwords do not match');
+            changePasswordMutation.mutate(data);
+          }}>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-muted-foreground">Current Password</label>
+              <input name="current_password" type="password" className="input-field w-full" required />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-muted-foreground">New Password</label>
+              <input name="new_password" type="password" className="input-field w-full" required minLength={6} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-muted-foreground">Confirm New Password</label>
+              <input name="confirm_password" type="password" className="input-field w-full" required />
+            </div>
+            <button type="submit" disabled={changePasswordMutation.isPending} className="btn-primary w-full justify-center">
+              {changePasswordMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Lock size={18} />}
+              <span>Update Security Access</span>
+            </button>
+            {changePasswordMutation.isSuccess && <p className="text-emerald-500 text-center text-sm font-bold">Access updated successfully.</p>}
+          </form>
+        </div>
+      )}
+
+      {/* Sync Modal */}
+      {showSyncModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShowSyncModal(false)} />
+          <div className="bento-card max-w-md w-full relative z-10 shadow-2xl ring-1 ring-border animate-in zoom-in-95 duration-200">
+            <h2 className="text-xl font-black mb-4 flex items-center gap-2">
+              <Shield className="text-primary" size={24} /> Verify Identity
+            </h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Enter your Date of Birth (DDMMYYYY) to authenticate with external records for roll <span className="text-foreground font-bold">{rollNo}</span>.
+            </p>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              syncMutation.mutate(syncDob);
+            }}>
+              <input 
+                autoFocus
+                className="input-field w-full text-center text-xl font-mono tracking-widest mb-6"
+                placeholder="DDMMYYYY"
+                maxLength={8}
+                value={syncDob}
+                onChange={(e) => setSyncDob(e.target.value.replace(/\D/g, ''))}
+              />
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setShowSyncModal(false)} className="flex-1 px-4 py-2 rounded-xl border border-border bg-card hover:bg-muted font-bold transition-colors">
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary">
-                  Start Sync
+                <button type="submit" disabled={syncMutation.isPending} className="flex-1 btn-primary justify-center">
+                  {syncMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <span>Verify & Sync</span>}
                 </button>
               </div>
             </form>
