@@ -32,6 +32,8 @@ app.include_router(admin.router, prefix="/api/admin")
 
 @app.on_event("startup")
 async def startup():
+    db_host = settings.DATABASE_URL.split("@")[-1].split(":")[0].split("/")[0]
+    logger.info(f"Application starting up... Connection target: {db_host}")
     async with engine.begin() as conn:
         # Tables should be created by Alembic in production, but keeping for dev parity
         # await conn.run_sync(Base.metadata.create_all)
