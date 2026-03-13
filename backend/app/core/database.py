@@ -1,10 +1,19 @@
+import logging
+import os
+import ssl
+from typing import Optional
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, validator
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
-    # Update to use asyncpg driver - changed default to placeholder to detect fallback
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@db_not_set:5432/spark"
+    # Use a dummy default that is easily detectable but won't cause immediate resolution errors if not used
+    DATABASE_URL: Optional[str] = Field(default=None, env="DATABASE_URL")
     SECRET_KEY: str = "maybedemo"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
@@ -18,37 +27,62 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
+    @validator("DATABASE_URL", pre=True)
+    def validate_database_url(cls, v):
+        if not v:
+            # Try to get from OS environment directly if pydantic didn't pick it up
+            v = os.environ.get("DATABASE_URL") or os.environ.get("DATABASE_PRIVATE_URL")
+        
+        if not v:
+            return None
+            
+        # Support common URL prefixes and ensure asyncpg driver
+        if v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif v.startswith("postgresql://") and "+asyncpg" not in v:
+            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+            
+        return v
+
 settings = Settings()
 
-# Diagnostic Logging
-import logging
-import os
-logger = logging.getLogger(__name__)
+# Enhanced Diagnostic Logging
+db_related_vars = [k for k in os.environ.keys() if "DATABASE" in k or "POSTGRES" in k or "PG" in k]
+logger.info(f"DB DIAGNOSTICS: Found {len(db_related_vars)} potentially relevant env vars: {db_related_vars}")
 
-# Check direct OS environment variables
-os_db_url = os.environ.get("DATABASE_URL")
-if os_db_url:
-    masked_url = os_db_url.split("@")[-1] if "@" in os_db_url else "HIDDEN"
-    print(f"OS_ENV_CHECK: DATABASE_URL is set in environment: ...@{masked_url}")
-else:
-    print("OS_ENV_CHECK: DATABASE_URL is NOT set in OS environment")
+# Critical check for DATABASE_URL
+if not settings.DATABASE_URL:
+    error_msg = (
+        "CRITICAL ERROR: DATABASE_URL is not set. "
+        "Please go to your Railway Service -> Variables and ensure 'DATABASE_URL' is added. "
+        "If you have a Postgres service, you can use '${{Postgres.DATABASE_URL}}' as the value."
+    )
+    logger.critical(error_msg)
+    raise RuntimeError(error_msg)
 
-db_host = settings.DATABASE_URL.split("@")[-1].split(":")[0].split("/")[0]
-print(f"DATABASE_SETTINGS: Final host in settings is '{db_host}'")
-logger.info(f"Database settings initialized. Target host: {db_host}")
-
-# Create a custom SSL context that doesn't verify certificates
-import ssl
-ssl_context = ssl.create_default_context()
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
+# Diagnostic Logging (Safe masked URL)
+try:
+    masked_url = settings.DATABASE_URL.split("@")[-1] if "@" in settings.DATABASE_URL else "INVALID_URL"
+    logger.info(f"Database settings initialized. Target host: {masked_url.split(':')[0].split('/')[0]}")
+except Exception as e:
+    logger.error(f"Error parsing DATABASE_URL for logging: {e}")
 
 # Determine if SSL is required
 use_ssl = "sslmode=require" in settings.DATABASE_URL
 db_url = settings.DATABASE_URL.replace("?sslmode=require", "").replace("&sslmode=require", "")
 
+# Create SSL context only if needed
+connect_args = {}
+if use_ssl:
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    connect_args["ssl"] = ssl_context
+    logger.info("Database connection: SSL enabled (verification disabled)")
+else:
+    logger.info("Database connection: SSL disabled")
+
 # Create async engine
-connect_args = {"ssl": ssl_context} if use_ssl else {}
 engine = create_async_engine(
     db_url,
     pool_size=settings.DB_POOL_SIZE,
