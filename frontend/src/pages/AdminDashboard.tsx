@@ -149,11 +149,7 @@ export default function AdminDashboard() {
     staleTime: 60_000,
   });
 
-  const { data: subjectCatalog } = useQuery<SubjectCatalogItem[]>({
-    queryKey: ['admin-subject-catalog'],
-    queryFn: () => api.get('/api/admin/subjects/catalog'),
-    staleTime: 300_000,
-  });
+
 
   const { data: riskRegistry } = useQuery<RiskRegistryResponse>({
     queryKey: ['admin-risk-registry', riskLevel],
@@ -172,10 +168,13 @@ export default function AdminDashboard() {
 
   const { data: leaderboard } = useQuery<SubjectLeaderboardResponse>({
     queryKey: ['admin-subject-leaderboard', selectedSubjectCode],
-    queryFn: () => api.get(`/api/admin/subjects/${selectedSubjectCode}/leaderboard`),
+    queryFn: () => api.get(`/api/admin/subject-leaderboard/${selectedSubjectCode}`),
     enabled: !!selectedSubjectCode,
     staleTime: 30_000,
   });
+
+  // Subject catalog comes from the command-center bundle — no separate request needed
+  const subjectCatalog = data?.subject_catalog;
 
   const semesterOptions = useMemo(() => {
     if (!subjectCatalog) return [];
@@ -223,11 +222,24 @@ export default function AdminDashboard() {
     getSortedRowModel: getSortedRowModel(),
   });
 
+  // grade letter → 0-100 score (matches backend GRADE_POINT_CASE * 10)
+  const gradeToScore = (grade?: string | null): number => {
+    const g = (grade ?? '').toUpperCase();
+    const map: Record<string, number> = { O: 100, S: 100, 'A+': 90, A: 80, 'B+': 70, B: 60, C: 50, D: 40, E: 30, P: 50, PASS: 50 };
+    return map[g] ?? 0;
+  };
+
+  // Best available score: total_marks > internal_marks > grade-derived
+  const bestScore = (s: { total_marks: number; internal_marks: number; grade?: string | null }) =>
+    s.total_marks > 0 ? { value: s.total_marks, label: 'marks' }
+    : s.internal_marks > 0 ? { value: s.internal_marks, label: 'internals' }
+    : { value: gradeToScore(s.grade), label: 'grade pts' };
+
   const leaderboardSpread = useMemo(() => {
     if (!leaderboard) return [];
     return [
-      ...leaderboard.top_leaderboard.map((s) => ({ student: s.student_name.split(' ')[0], marks: s.total_marks })),
-      ...leaderboard.bottom_leaderboard.map((s) => ({ student: s.student_name.split(' ')[0], marks: s.total_marks })),
+      ...leaderboard.top_leaderboard.map((s) => ({ student: s.student_name.split(' ')[0], marks: bestScore(s).value })),
+      ...leaderboard.bottom_leaderboard.map((s) => ({ student: s.student_name.split(' ')[0], marks: bestScore(s).value })),
     ];
   }, [leaderboard]);
 
@@ -452,12 +464,21 @@ export default function AdminDashboard() {
               <div className="rounded-2xl border border-border/50 bg-muted/20 p-4">
                 <p className="mb-3 text-xs font-black uppercase tracking-widest text-muted-foreground">Top Toppers</p>
                 <div className="space-y-2">
-                  {leaderboard?.top_leaderboard.map(e => (
-                    <button key={e.roll_no} onClick={() => setSelectedRollNo(e.roll_no)} className="row-card w-full text-left">
-                      <span className="text-sm font-semibold">{e.student_name}</span>
-                      <span className="text-xs font-bold text-primary">{e.total_marks}</span>
-                    </button>
-                  ))}
+                  {leaderboard?.top_leaderboard.map(e => {
+                    const { value, label } = bestScore(e);
+                    return (
+                      <button key={e.roll_no} onClick={() => setSelectedRollNo(e.roll_no)} className="row-card w-full text-left">
+                        <div>
+                          <p className="text-sm font-semibold">{e.student_name}</p>
+                          {e.grade && <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Grade: {e.grade}</p>}
+                        </div>
+                        <span className="text-xs font-bold text-primary">
+                          {value > 0 ? value : '—'}{' '}
+                          {value > 0 && <span className="font-normal text-muted-foreground">{label}</span>}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <div className="rounded-2xl border border-border/50 bg-muted/20 p-4">
