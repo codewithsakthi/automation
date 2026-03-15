@@ -219,6 +219,24 @@
     background-size: 200% 100%;
     @apply animate-shimmer rounded-2xl;
   }
+
+  /* Glassmorphism Utilities */
+  .glass {
+    @apply border border-white/10 bg-white/5 backdrop-blur-xl;
+  }
+
+  .glass-dark {
+    @apply border border-white/5 bg-black/40 backdrop-blur-2xl;
+  }
+
+  .card-premium {
+    @apply shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-500 hover:shadow-[0_25px_60px_rgba(0,0,0,0.4)] hover:-translate-y-1;
+  }
+
+  /* Force dark dropdowns in dark theme */
+  [data-theme='dark'] select option {
+    @apply bg-[#0d1c24] text-[#edf5f7];
+  }
 }
 
 .recharts-default-tooltip {

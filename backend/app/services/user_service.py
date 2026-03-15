@@ -53,5 +53,6 @@ class UserService:
             batch=student.batch if student else None,
             current_semester=student.current_semester if student else None,
             program_name=student.program.name if student and student.program else None,
+            program_code=student.program.code if student and student.program else None,
             rank=rank,
         )

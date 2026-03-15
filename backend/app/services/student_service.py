@@ -342,3 +342,67 @@ class StudentService:
             available_sections=available_sections,
             missing_sections=missing_sections,
         )
+    @staticmethod
+    async def get_detailed_attendance(
+        student_id: int, 
+        semester: Optional[int], 
+        page: int, 
+        size: int, 
+        db: AsyncSession
+    ) -> schemas.PaginatedAttendance:
+        base_stmt = select(models.Attendance).filter(models.Attendance.student_id == student_id)
+        
+        if semester:
+            base_stmt = base_stmt.filter(models.Attendance.semester == semester)
+            
+        # Get total count for pagination
+        count_stmt = select(func.count()).select_from(base_stmt.subquery())
+        total = await db.scalar(count_stmt) or 0
+        
+        # Calculate summary for the filtered data
+        summary_stmt = select(
+            func.sum(models.Attendance.total_present).label("total_present"),
+            func.sum(models.Attendance.total_hours).label("total_hours"),
+            func.count().label("total_days")
+        ).filter(models.Attendance.student_id == student_id)
+        
+        if semester:
+            summary_stmt = summary_stmt.filter(models.Attendance.semester == semester)
+            
+        summary_result = await db.execute(summary_stmt)
+        summary_row = summary_result.first()
+        
+        summary = None
+        if summary_row and summary_row.total_hours:
+            absent_days_stmt = select(func.count()).filter(
+                models.Attendance.student_id == student_id,
+                models.Attendance.total_present < models.Attendance.total_hours
+            )
+            if semester:
+                absent_days_stmt = absent_days_stmt.filter(models.Attendance.semester == semester)
+            
+            absent_days = await db.scalar(absent_days_stmt) or 0
+            
+            summary = schemas.AttendanceInsight(
+                total_present=int(summary_row.total_present or 0),
+                total_hours=int(summary_row.total_hours or 0),
+                percentage=round((summary_row.total_present / summary_row.total_hours) * 100, 2),
+                recent_streak_days=0, # Streak calculation is complex for filtered views
+                absent_days=absent_days
+            )
+            
+        # Apply sorting and pagination for items
+        stmt = base_stmt.order_by(models.Attendance.date.desc()).offset((page - 1) * size).limit(size)
+        result = await db.execute(stmt)
+        items = result.scalars().all()
+        
+        pages = (total + size - 1) // size if size > 0 else 0
+        
+        return schemas.PaginatedAttendance(
+            items=[schemas.AttendanceResponse.model_validate(item) for item in items],
+            total=total,
+            page=page,
+            size=size,
+            pages=pages,
+            summary=summary
+        )

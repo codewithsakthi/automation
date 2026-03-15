@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Loader2, Sparkles, TrendingUp, CheckCircle2, AlertTriangle, Info, 
@@ -19,7 +20,23 @@ import { buildStudentIntelligence, fmt, num, CHART_COLORS } from '../services/ac
 const Dashboard = () => {
   const { user, logout, updateUser } = useAuthStore();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('Overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'Overview';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Sync state with URL params
+  useEffect(() => {
+    const tab = searchParams.get('tab') || 'Overview';
+    if (tab !== activeTab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  // Sync URL params with state
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setSearchParams({ tab });
+  };
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState('ALL');
   const [semFilter, setSemFilter] = useState('ALL');
@@ -28,9 +45,27 @@ const Dashboard = () => {
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [syncDob, setSyncDob] = useState(localStorage.getItem('syncDob') || '');
   
+  // Attendance Pagination & Filter State
+  const [attPage, setAttPage] = useState(1);
+  const [attSem, setAttSem] = useState('ALL');
+  const attSize = 10;
+  
   const rollNo = user?.roll_no || user?.username;
 
   // Data Fetching
+  const { data: profile } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => api.get('/api/auth/me'),
+    staleTime: 600000,
+  });
+
+  // Sync profile to store
+  useEffect(() => {
+    if (profile) {
+      updateUser(profile);
+    }
+  }, [profile, updateUser]);
+
   const { data: performance, isLoading: loadingPerf } = useQuery({
     queryKey: ['performance', rollNo],
     queryFn: () => api.get(`/api/students/performance/${rollNo}`),
@@ -41,6 +76,18 @@ const Dashboard = () => {
     queryKey: ['student-command-center', rollNo],
     queryFn: () => api.get(`/api/students/command-center/${rollNo}`),
     enabled: !!rollNo,
+  });
+
+  const { data: attendanceData, isLoading: loadingAttendance } = useQuery({
+    queryKey: ['attendance', rollNo, attSem, attPage],
+    queryFn: () => api.get(`/api/students/attendance/${rollNo}`, {
+      params: {
+        semester: attSem === 'ALL' ? undefined : attSem,
+        page: attPage,
+        size: attSize
+      }
+    }),
+    enabled: !!rollNo && activeTab === 'Attendance',
   });
 
   const intelligence = useMemo(() => {
@@ -121,48 +168,30 @@ const Dashboard = () => {
   return (
     <div className="w-full">
       {/* Header Section */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
-        <div>
-          <h1 className="text-4xl font-extrabold tracking-tight mb-2">
-            Welcome, <span className="text-gradient">{user?.name || 'Academic'}</span>
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 p-8 rounded-[2.5rem] glass-dark relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -mr-32 -mt-32" />
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-4">
+             <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/20">Academic Pulse v2</span>
+          </div>
+          <h1 className="text-3xl md:text-5xl font-black tracking-tighter mb-2 leading-tight">
+            Welcome, <span className="text-gradient animate-pulse">{user?.name || 'Academic'}</span>
           </h1>
-          <p className="text-muted-foreground max-w-2xl">
-            {user?.program_name} • Batch {user?.batch} • Roll No: <span className="text-foreground font-semibold">{rollNo}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setShowSyncModal(true)}
-            disabled={syncMutation.isPending}
-            className="btn-primary"
-          >
-            {syncMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
-            <span>Sync Records</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground/80">
+            <span className="flex items-center gap-1.5"><Shield size={14} className="text-primary" /> {user?.program_name || 'Generic Program'}</span>
+            <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+            <span className="flex items-center gap-1.5"><Calendar size={14} className="text-accent" /> Batch {user?.batch}</span>
+            <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+            <span className="flex items-center gap-1.5 text-foreground font-semibold">Roll No: {rollNo}</span>
+          </div>
         </div>
       </header>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-2xl w-fit mb-8">
-        {['Overview', 'Performance', 'Profile', 'Security'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
-              activeTab === tab 
-                ? 'bg-card text-foreground shadow-sm ring-1 ring-border' 
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
 
       {activeTab === 'Overview' && (
         <div className="bento-grid">
           {/* Intelligence Spotlight */}
-          <div className="bento-card col-span-12 lg:col-span-8 flex flex-col justify-between">
+          <div className="col-span-12 lg:col-span-8 flex flex-col justify-between glass rounded-[2.5rem] p-8 card-premium">
             <div>
               <SectionTitle 
                 eyebrow="Intelligence Pulse" 
@@ -221,7 +250,7 @@ const Dashboard = () => {
           </div>
 
           {/* Charts Row */}
-          <div className="bento-card col-span-12 lg:col-span-7">
+          <div className="col-span-12 lg:col-span-7 glass rounded-[2.5rem] p-8 card-premium">
             <SectionTitle title="Performance Timeline" copy="Semester-wise GPA trajectory and historical growth." />
             <div className="h-80 w-full mt-6">
               <ResponsiveContainer width="100%" height="100%">
@@ -245,7 +274,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="bento-card col-span-12 lg:col-span-5">
+          <div className="col-span-12 lg:col-span-5 glass rounded-[2.5rem] p-8 card-premium">
             <SectionTitle title="Assessment Mastery" copy="Consistency across technical internal evaluations." />
             <div className="h-80 w-full mt-6">
               <ResponsiveContainer width="100%" height="100%">
@@ -266,7 +295,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="bento-card col-span-12 lg:col-span-6">
+          <div className="glass rounded-[2.5rem] p-8 card-premium col-span-12 lg:col-span-6">
             <SectionTitle title="Recommended Actions" copy="Priority steps generated from your current academic signals." />
             <div className="space-y-3 mt-6">
               {commandCenter?.recommended_actions?.map((action) => (
@@ -291,7 +320,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="bento-card col-span-12 lg:col-span-6">
+          <div className="glass rounded-[2.5rem] p-8 card-premium col-span-12 lg:col-span-6">
             <SectionTitle title="Recent Result Flow" copy="Latest result entries and attempt history." />
             <div className="space-y-3 mt-6">
               {commandCenter?.recent_results?.slice(0, 6).map((item, index) => (
@@ -319,7 +348,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="bento-card col-span-12 lg:col-span-6">
+          <div className="glass rounded-[2.5rem] p-8 card-premium col-span-12 lg:col-span-6">
             <SectionTitle title="Semester Focus" copy="Your most recent semester snapshots." />
             <div className="space-y-3 mt-6">
               {commandCenter?.semester_focus?.map((item) => (
@@ -343,7 +372,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="bento-card col-span-12 lg:col-span-6">
+          <div className="glass rounded-[2.5rem] p-8 card-premium col-span-12 lg:col-span-6">
             <SectionTitle title="Record Health" copy="Keep your record complete for reviews, scholarships, and placements." />
             <div className="mt-6 space-y-4">
               <div className="rounded-2xl border border-border bg-card/60 p-5">
@@ -372,9 +401,9 @@ const Dashboard = () => {
 
       {activeTab === 'Performance' && (
         <div className="space-y-6">
-          <div className="bento-card">
+          <div className="glass rounded-[2.5rem] p-8 card-premium">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-              <SectionTitle title="Subject Repository" copy="Full academic record with advanced filtering and drill-down." />
+              <SectionTitle title="Semester Results" copy="Comprehensive record of final grades and total marks." />
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative group">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={16} />
@@ -404,7 +433,7 @@ const Dashboard = () => {
                     <SortHeader label="Subject" field="subject" currentSort={sortBy} currentDir={sortDir} onSort={setSortBy} />
                     <SortHeader label="Sem" field="semester" currentSort={sortBy} currentDir={sortDir} onSort={setSortBy} />
                     <SortHeader label="Grade" field="grade" currentSort={sortBy} currentDir={sortDir} onSort={setSortBy} />
-                    <SortHeader label="Internal" field="internal" currentSort={sortBy} currentDir={sortDir} onSort={setSortBy} />
+                    <SortHeader label="Result" field="result_status" currentSort={sortBy} currentDir={sortDir} onSort={setSortBy} />
                     <SortHeader label="Total" field="total" currentSort={sortBy} currentDir={sortDir} onSort={setSortBy} />
                   </tr>
                 </thead>
@@ -413,25 +442,80 @@ const Dashboard = () => {
                     <tr key={mark.id} className="hover:bg-muted/20 transition-colors group">
                       <td className="px-4 py-4 font-mono font-bold text-primary">{mark.subject?.course_code}</td>
                       <td className="px-4 py-4 font-medium">{mark.subject?.name}</td>
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-4 text-center">
                         <span className="px-2 py-1 rounded-md bg-muted text-xs font-bold text-muted-foreground">Sem {mark.semester}</span>
                       </td>
-                      <td className="px-4 py-4">
-                        <span className={`font-black ${['U', 'F', 'FAIL'].includes(mark.grade) ? 'text-destructive' : 'text-foreground'}`}>
+                      <td className="px-4 py-4 text-center">
+                        <span className={`font-black ${['U', 'F', 'FAIL', 'RA'].includes(mark.grade?.toUpperCase()) ? 'text-destructive' : 'text-foreground'}`}>
                           {mark.grade || '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-muted-foreground">{mark.internal_marks || '-'}</td>
-                      <td className="px-4 py-4 font-bold">{mark.total_marks || '-'}</td>
+                      <td className="px-4 py-4">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                          mark.result_status?.toUpperCase() === 'PASS' 
+                            ? 'bg-emerald-500/10 text-emerald-500' 
+                            : 'bg-rose-500/10 text-rose-500'
+                        }`}>
+                          {mark.result_status || '-'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-right font-bold">{mark.total_marks || '-'}</td>
                     </tr>
                   ))}
+                  {sortedMarks.length === 0 && (
+                    <tr>
+                      <td colSpan="6" className="px-4 py-12 text-center text-muted-foreground italic">No subjects matching your current trajectory filters.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Internal Assessment (CIT) Table */}
+          <div className="glass rounded-[2.5rem] p-8 card-premium">
+            <SectionTitle title="Internal Assessment (CIT)" copy="Detailed breakdown of internal testing cycles." />
+            <div className="overflow-x-auto rounded-2xl border border-border mt-8">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-muted/30">
+                    <th className="px-4 py-4 text-left font-black uppercase tracking-widest text-[10px] text-muted-foreground">Code</th>
+                    <th className="px-4 py-4 text-left font-black uppercase tracking-widest text-[10px] text-muted-foreground">Subject</th>
+                    <th className="px-4 py-4 text-center font-black uppercase tracking-widest text-[10px] text-muted-foreground">CIT 1</th>
+                    <th className="px-4 py-4 text-center font-black uppercase tracking-widest text-[10px] text-muted-foreground">CIT 2</th>
+                    <th className="px-4 py-4 text-center font-black uppercase tracking-widest text-[10px] text-muted-foreground">CIT 3</th>
+                    <th className="px-4 py-4 text-right font-black uppercase tracking-widest text-[10px] text-muted-foreground">Internal Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {sortedMarks.map((mark) => (
+                    <tr key={`cit-${mark.id}`} className="hover:bg-muted/20 transition-colors group">
+                      <td className="px-4 py-4 font-mono font-bold text-accent">{mark.subject?.course_code}</td>
+                      <td className="px-4 py-4 font-medium">{mark.subject?.name}</td>
+                      <td className="px-4 py-4 text-center font-bold text-muted-foreground">{mark.cit1_marks ?? '-'}</td>
+                      <td className="px-4 py-4 text-center font-bold text-muted-foreground">{mark.cit2_marks ?? '-'}</td>
+                      <td className="px-4 py-4 text-center font-bold text-muted-foreground">{mark.cit3_marks ?? '-'}</td>
+                      <td className="px-4 py-4 text-right">
+                        <span className={`font-black p-2 rounded-lg ${
+                          (mark.internal_marks ?? 0) < 15 ? 'text-rose-500 bg-rose-500/5' : 'text-primary bg-primary/5'
+                        }`}>
+                          {mark.internal_marks ?? '-'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {sortedMarks.length === 0 && (
+                    <tr>
+                      <td colSpan="6" className="px-4 py-12 text-center text-muted-foreground italic">No internal assessment data available for the current filter.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
           
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bento-card">
+            <div className="glass rounded-[2.5rem] p-8 card-premium">
               <SectionTitle title="Subject Mastery Distribution" />
               <div className="h-64 mt-4 text-center">
                 <ResponsiveContainer width="100%" height="100%">
@@ -444,7 +528,7 @@ const Dashboard = () => {
                 </ResponsiveContainer>
               </div>
             </div>
-            <div className="bento-card overflow-hidden">
+            <div className="glass rounded-[2.5rem] p-8 card-premium overflow-hidden">
                <SectionTitle title="Intelligence: Weak Areas" />
                <div className="space-y-3 mt-6">
                  {intelligence?.weaknesses?.length ? intelligence.weaknesses.map((w, i) => (
@@ -463,7 +547,7 @@ const Dashboard = () => {
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bento-card overflow-hidden">
+            <div className="glass rounded-[2.5rem] p-8 card-premium overflow-hidden">
               <SectionTitle title="Strength Subjects" copy="Subjects where your current signal is strongest." />
               <div className="space-y-3 mt-6">
                 {commandCenter?.analytics?.strength_subjects?.map((item, index) => (
@@ -480,7 +564,7 @@ const Dashboard = () => {
                 ))}
               </div>
             </div>
-            <div className="bento-card overflow-hidden">
+            <div className="glass rounded-[2.5rem] p-8 card-premium overflow-hidden">
               <SectionTitle title="Priority Watchlist" copy="Subjects that need the earliest attention." />
               <div className="space-y-3 mt-6">
                 {commandCenter?.analytics?.risk_subjects?.length ? commandCenter.analytics.risk_subjects.map((item, index) => (
@@ -503,9 +587,143 @@ const Dashboard = () => {
         </div>
       )}
 
+      {activeTab === 'Attendance' && (
+        <div className="space-y-6">
+          <div className="glass rounded-[2.5rem] p-8 card-premium">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div className="flex flex-col">
+                <SectionTitle 
+                  title="Attendance Records" 
+                  copy="Day-by-day chronological record of your academic presence."
+                />
+                {attendanceData?.summary && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${
+                      attendanceData.summary.percentage >= 75 
+                        ? 'bg-emerald-500/10 text-emerald-500' 
+                        : 'bg-rose-500/10 text-rose-500'
+                    }`}>
+                      {attSem === 'ALL' ? 'Overall' : `Sem ${attSem}`} Attendance: {attendanceData.summary.percentage}%
+                    </div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
+                      {attendanceData.summary.total_present}/{attendanceData.summary.total_hours} Hours
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 bg-muted/30 p-1.5 rounded-xl border border-border">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-2">Semester</span>
+                  <select 
+                    className="bg-transparent text-sm font-bold focus:outline-none pr-4"
+                    value={attSem}
+                    onChange={(e) => {
+                      setAttSem(e.target.value);
+                      setAttPage(1);
+                    }}
+                  >
+                    <option value="ALL">All Semesters</option>
+                    {Array.from({ length: (profile?.program_code || user?.program_code)?.toUpperCase() === 'MCA' ? 4 : 8 }, (_, i) => i + 1).map(s => (
+                      <option key={s} value={s} className="bg-[#0d1c24] text-foreground">Semester {s}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-8 space-y-4">
+              {loadingAttendance ? (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <RefreshCw className="animate-spin text-primary mb-4" size={32} />
+                  <p className="text-muted-foreground animate-pulse">Loading attendance records...</p>
+                </div>
+              ) : attendanceData?.items?.length ? (
+                <>
+                  {attendanceData.items.map((day, idx) => (
+                    <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-[2rem] border border-white/5 glass-dark hover:bg-white/10 transition-all duration-500 group card-premium">
+                      <div className="flex items-center gap-5">
+                        <div className={`p-4 rounded-2xl ${
+                          day.total_present === day.total_hours 
+                            ? 'bg-emerald-500/10 text-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.1)]' 
+                            : day.total_present === 0 
+                              ? 'bg-rose-500/10 text-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.1)]'
+                              : 'bg-amber-500/10 text-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.1)]'
+                        }`}>
+                          <Calendar size={24} />
+                        </div>
+                        <div>
+                          <p className="text-lg font-black tracking-tight">{new Date(day.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                          <div className="flex items-center gap-3 mt-1.5">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-tighter ${
+                              day.total_present === day.total_hours ? 'bg-emerald-500 text-white' : 'bg-muted text-muted-foreground'
+                            }`}>
+                              {day.total_present === day.total_hours ? 'Full Presence' : `${day.total_present}h Tracked`}
+                            </span>
+                            <span className="text-xs font-bold text-muted-foreground/60">{Math.round((day.total_present / day.total_hours) * 100)}% Match</span>
+                            {day.semester && (
+                              <span className="text-[10px] font-black text-primary/80 uppercase tracking-widest">Sem {day.semester}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 p-2.5 bg-black/20 rounded-2xl w-fit">
+                        {day.status_array.map((status, sIdx) => (
+                          <div key={sIdx} className="group/hour relative">
+                            <div className={`h-6 w-3 rounded-full transition-all duration-500 ${
+                                status.toUpperCase() === 'P' || status.toUpperCase() === 'OD'
+                                  ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.4)] group-hover/hour:h-8' 
+                                  : 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.4)] group-hover/hour:h-8'
+                              }`}
+                            />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-3 py-1.5 glass-dark text-[10px] rounded-lg shadow-2xl opacity-0 group-hover/hour:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50 border border-white/10 font-black uppercase tracking-tighter">
+                              H{sIdx + 1}: {status.toUpperCase() === 'P' ? 'Present' : status.toUpperCase() === 'OD' ? 'On Duty' : 'Absent'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Pagination Controls */}
+                  {attendanceData.pages > 1 && (
+                    <div className="flex items-center justify-between pt-6 border-t border-border mt-8">
+                      <p className="text-sm text-muted-foreground font-medium">
+                        Showing page <span className="text-foreground font-bold">{attPage}</span> of <span className="text-foreground font-bold">{attendanceData.pages}</span>
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => setAttPage(prev => Math.max(1, prev - 1))}
+                          disabled={attPage === 1}
+                          className="p-2 rounded-xl bg-muted border border-border disabled:opacity-30 hover:bg-muted/80 transition-colors"
+                        >
+                          <TrendingUp size={20} className="rotate-[270deg]" />
+                        </button>
+                        <button 
+                          onClick={() => setAttPage(prev => Math.min(attendanceData.pages, prev + 1))}
+                          disabled={attPage === attendanceData.pages}
+                          className="p-2 rounded-xl bg-muted border border-border disabled:opacity-30 hover:bg-muted/80 transition-colors"
+                        >
+                          <TrendingUp size={20} className="rotate-90" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 bg-muted/20 rounded-3xl border border-dashed border-border">
+                  <Calendar className="text-muted-foreground/30 mb-4" size={48} />
+                  <p className="text-muted-foreground font-medium">No attendance records found for this filter.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'Profile' && (
         <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 bento-card">
+          <div className="lg:col-span-2 glass rounded-[2.5rem] p-8 card-premium">
             <SectionTitle title="Profile Information" copy="Update your public profile and academic identifiers." />
             <form className="mt-8 space-y-6" onSubmit={(e) => {
               e.preventDefault();
@@ -532,7 +750,7 @@ const Dashboard = () => {
               </button>
             </form>
           </div>
-          <div className="bento-card">
+          <div className="glass rounded-[2.5rem] p-8 card-premium">
             <SectionTitle title="Account Status" />
             <div className="mt-8 space-y-4">
               <div className="flex justify-between p-3 rounded-xl bg-muted/50">
@@ -561,7 +779,7 @@ const Dashboard = () => {
       )}
 
       {activeTab === 'Security' && (
-        <div className="max-w-2xl mx-auto bento-card">
+        <div className="max-w-2xl mx-auto glass rounded-[2.5rem] p-8 card-premium">
           <SectionTitle title="Security Protocols" copy="Maintain the integrity of your academic command center." />
           <form className="mt-8 space-y-6" onSubmit={(e) => {
             e.preventDefault();

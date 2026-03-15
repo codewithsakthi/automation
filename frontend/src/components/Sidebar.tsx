@@ -11,8 +11,12 @@ import {
   LogOut,
   Moon,
   Sun,
-  Activity
+  Activity,
+  CalendarCheck,
+  User,
+  Lock
 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 
@@ -23,19 +27,32 @@ interface NavItemProps {
   isActive?: boolean;
 }
 
-const NavItem = ({ icon: Icon, label, href, isActive }: NavItemProps) => (
-  <a
-    href={href}
-    className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-      isActive 
-        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' 
-        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-    }`}
-  >
-    <Icon size={18} className={isActive ? 'text-inherit' : 'group-hover:text-primary transition-colors'} />
-    <span>{label}</span>
-  </a>
-);
+const NavItem = ({ icon: Icon, label, href, isActive }: NavItemProps) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  const handleClick = (e: React.MouseEvent) => {
+    if (href.startsWith('?')) {
+      e.preventDefault();
+      const params = new URLSearchParams(href);
+      setSearchParams(params);
+    }
+  };
+
+  return (
+    <a
+      href={href}
+      onClick={handleClick}
+      className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+        isActive 
+          ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' 
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+      }`}
+    >
+      <Icon size={18} className={isActive ? 'text-inherit' : 'group-hover:text-primary transition-colors'} />
+      <span>{label}</span>
+    </a>
+  );
+};
 
 const NavGroup = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className="mb-6">
@@ -57,6 +74,8 @@ interface SidebarProps {
 export default function Sidebar({ width, onResizeStart, isResizing }: SidebarProps) {
   const { logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
+  const [searchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'Overview';
 
   return (
     <aside 
@@ -78,18 +97,46 @@ export default function Sidebar({ width, onResizeStart, isResizing }: SidebarPro
         {/* Navigation Groups */}
         <nav className="flex-1 overflow-y-auto pr-2 hide-scrollbar">
           <NavGroup title="Overview">
-            <NavItem icon={LayoutDashboard} label="Command Center" href="#command-center" isActive />
+            <NavItem 
+              icon={LayoutDashboard} 
+              label="Command Center" 
+              href="?tab=Overview" 
+              isActive={activeTab === 'Overview'} 
+            />
             <NavItem icon={ShieldAlert} label="Risk Radar" href="#risk-radar" />
             <NavItem icon={Target} label="Placement Pipeline" href="#placement-pipeline" />
           </NavGroup>
 
           <NavGroup title="Analytics">
-            <NavItem icon={Zap} label="Subject Bottlenecks" href="#bottlenecks" />
+            <NavItem 
+              icon={Zap} 
+              label="Subject Analytics" 
+              href="?tab=Performance" 
+              isActive={activeTab === 'Performance'} 
+            />
+            <NavItem 
+              icon={CalendarCheck} 
+              label="Attendance Insight" 
+              href="?tab=Attendance" 
+              isActive={activeTab === 'Attendance'} 
+            />
             <NavItem icon={Trophy} label="Leaderboard" href="#leaderboard" />
             <NavItem icon={Layers} label="Faculty Impact" href="#faculty-impact" />
           </NavGroup>
 
           <NavGroup title="Management">
+            <NavItem 
+              icon={User} 
+              label="Profile Settings" 
+              href="?tab=Profile" 
+              isActive={activeTab === 'Profile'} 
+            />
+            <NavItem 
+              icon={Lock} 
+              label="Security Access" 
+              href="?tab=Security" 
+              isActive={activeTab === 'Security'} 
+            />
             <NavItem icon={Users} label="Student Directory" href="#directory" />
             <NavItem icon={ShieldAlert} label="Watchlist" href="#watchlist" />
             <NavItem icon={Trophy} label="Top Performers" href="#top-performers" />

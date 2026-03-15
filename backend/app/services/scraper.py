@@ -469,6 +469,7 @@ class PortalScraper:
                     existing.status_array = status_array
                     existing.total_present = total_present
                     existing.total_hours = total_hours
+                    existing.semester = semester
                 else:
                     db.add(models.Attendance(
                         student_id=student.id,
@@ -477,6 +478,7 @@ class PortalScraper:
                         status_array=status_array,
                         total_present=total_present,
                         total_hours=total_hours,
+                        semester=semester
                     ))
         
         # Sync to raw SQL attendance_summary

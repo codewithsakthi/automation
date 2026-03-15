@@ -1,70 +1,94 @@
+import asyncio
 import hashlib
-from app.database import SessionLocal, engine, Base
+from sqlalchemy import select
+from app.core.database import AsyncSessionLocal, engine, Base
 from app import models
-from sqlalchemy import text
 
 def get_simple_hash(password: str):
     return hashlib.sha256(password.encode()).hexdigest()
 
-def seed_db():
-    print("Seeding database (Simple Hash)...")
-    db = SessionLocal()
-    try:
-        # Re-create tables
-        Base.metadata.create_all(bind=engine)
-        print("Tables re-created.")
+async def seed_db():
+    print("Seeding database (Async)...")
+    async with AsyncSessionLocal() as db:
+        try:
+            # Seed Roles
+            roles = ['admin', 'staff', 'student']
+            for role_name in roles:
+                result = await db.execute(select(models.Role).filter(models.Role.name == role_name))
+                if not result.scalars().first():
+                    db.add(models.Role(name=role_name))
+            await db.commit()
+            print("Roles seeded.")
 
-        # Seed Roles
-        roles = ['admin', 'staff', 'student']
-        for role_name in roles:
-            if not db.query(models.Role).filter(models.Role.name == role_name).first():
-                db.add(models.Role(name=role_name))
-        db.commit()
-        print("Roles seeded.")
+            # Seed Programs
+            result = await db.execute(select(models.Program).filter(models.Program.code == 'MCA'))
+            mca_program = result.scalars().first()
+            if not mca_program:
+                mca_program = models.Program(code='MCA', name='Master of Computer Applications')
+                db.add(mca_program)
+                await db.commit()
+                await db.refresh(mca_program)
+                print("MCA Program seeded.")
 
-        # Create Admin User
-        admin_role = db.query(models.Role).filter(models.Role.name == 'admin').first()
-        if not db.query(models.User).filter(models.User.username == 'admin').first():
-            # Use SHA256 for initial seed if bcrypt fails
-            hashed_pwd = get_simple_hash('admin123')
-            admin_user = models.User(
-                username='admin',
-                password_hash=hashed_pwd,
-                role_id=admin_role.id,
-                is_initial_password=False
-            )
-            db.add(admin_user)
-            db.commit()
-            print("Admin user created (username: admin, password: admin123)")
-
-        # Create Test Student
-        student_role = db.query(models.Role).filter(models.Role.name == 'student').first()
-        if not db.query(models.User).filter(models.User.username == '258312').first():
-            hashed_pwd = get_simple_hash('29072003') # DOB as password
-            stu_user = models.User(
-                username='258312',
-                password_hash=hashed_pwd,
-                role_id=student_role.id,
-                is_initial_password=True
-            )
-            db.add(stu_user)
-            db.commit()
+            # Create Admin User
+            result = await db.execute(select(models.Role).filter(models.Role.name == 'admin'))
+            admin_role = result.scalars().first()
             
-            student = models.Student(
-                id=stu_user.id,
-                roll_no='258312',
-                name='SAKTHIVEL M',
-                dob='2003-07-29',
-                batch='2025-2027'
-            )
-            db.add(student)
-            db.commit()
-            print("Test Student created (username: 258312, password: DOB)")
+            result = await db.execute(select(models.User).filter(models.User.username == 'admin'))
+            if not result.scalars().first():
+                hashed_pwd = get_simple_hash('admin123')
+                admin_user = models.User(
+                    username='admin',
+                    password_hash=hashed_pwd,
+                    role_id=admin_role.id,
+                    is_initial_password=False
+                )
+                db.add(admin_user)
+                await db.commit()
+                print("Admin user created (username: admin, password: admin123)")
 
-    except Exception as e:
-        print(f"Error seeding DB: {e}")
-    finally:
-        db.close()
+            # Create Test Student
+            result = await db.execute(select(models.Role).filter(models.Role.name == 'student'))
+            student_role = result.scalars().first()
+            
+            result = await db.execute(select(models.User).filter(models.User.username == '258312'))
+            if not result.scalars().first():
+                hashed_pwd = get_simple_hash('29072003') # DOB as password
+                stu_user = models.User(
+                    username='258312',
+                    password_hash=hashed_pwd,
+                    role_id=student_role.id,
+                    is_initial_password=True
+                )
+                db.add(stu_user)
+                await db.commit()
+                await db.refresh(stu_user)
+                
+                student = models.Student(
+                    id=stu_user.id,
+                    roll_no='258312',
+                    name='SAKTHIVEL M',
+                    dob='2003-07-29',
+                    batch='2025-2027',
+                    program_id=mca_program.id,
+                    current_semester=3
+                )
+                db.add(student)
+                await db.commit()
+                print("Test Student created (username: 258312, password: DOB, program: MCA)")
+            else:
+                # Update existing student if missing program_id
+                result = await db.execute(select(models.Student).filter(models.Student.roll_no == '258312'))
+                student = result.scalars().first()
+                if student and not student.program_id:
+                    student.program_id = mca_program.id
+                    student.current_semester = 3
+                    await db.commit()
+                    print("Updated existing Test Student with MCA program.")
+
+        except Exception as e:
+            print(f"Error seeding DB: {e}")
+            await db.rollback()
 
 if __name__ == "__main__":
-    seed_db()
+    asyncio.run(seed_db())

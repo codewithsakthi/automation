@@ -91,6 +91,7 @@ class Attendance(Base):
     status_array = Column(ARRAY(CHAR(1)), nullable=False)
     total_present = Column(Integer)
     total_hours = Column(Integer)
+    semester = Column(Integer)
 
     student = relationship("Student", back_populates="attendance")
 

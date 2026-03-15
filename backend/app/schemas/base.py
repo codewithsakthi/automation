@@ -48,6 +48,7 @@ class CurrentUser(User):
     batch: Optional[str] = None
     current_semester: Optional[int] = None
     program_name: Optional[str] = None
+    program_code: Optional[str] = None
     rank: Optional[int] = None
 
 
@@ -152,6 +153,7 @@ class Subject(BaseModel):
 
 
 class StudentMarkResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     semester: int
     subject: Optional[Subject] = None
     cit1_marks: Optional[float] = None
@@ -164,11 +166,22 @@ class StudentMarkResponse(BaseModel):
     result_status: Optional[str] = None
 
 class AttendanceResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     date: date
     hours_per_day: int
     status_array: List[str]
     total_present: int
     total_hours: int
+    semester: Optional[int] = None
+
+class PaginatedAttendance(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    items: List[AttendanceResponse]
+    total: int
+    page: int
+    size: int
+    pages: int
+    summary: Optional[AttendanceInsight] = None
 
 class Program(BaseModel):
     id: int

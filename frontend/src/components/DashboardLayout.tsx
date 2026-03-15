@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, Bell, User, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ThemeToggle from './ThemeToggle';
 import MobileBottomNav from './MobileBottomNav';
@@ -23,6 +23,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { theme, toggleTheme } = useThemeStore();
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'Overview';
   const role = (user as any)?.role === 'admin' ? 'admin' : 'student';
 
   const handleLogout = () => {
@@ -90,9 +92,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-sm font-extrabold tracking-tight text-foreground md:hidden">SPARK</span>
             <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="font-medium hover:text-foreground cursor-pointer">Dashboard</span>
+              <span className="font-medium hover:text-foreground cursor-pointer" onClick={() => navigate('/dashboard')}>Dashboard</span>
               <ChevronRight size={14} className="opacity-40" />
-              <span className="font-semibold text-foreground">Analytics</span>
+              <span className="font-semibold text-foreground">
+                {activeTab === 'Performance' ? 'Subject Analytics' : 
+                 activeTab === 'Attendance' ? 'Attendance Insight' : 
+                 activeTab === 'Profile' ? 'Profile Settings' : 
+                 activeTab === 'Security' ? 'Security Access' : 
+                 activeTab}
+              </span>
             </div>
           </div>
 

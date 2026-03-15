@@ -33,10 +33,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "http://192.168.1.4:5173",      # local network mobile testing
-        "https://*.vercel.app",          # all Vercel preview + prod deployments
-        "https://spark-backend.up.railway.app",
+        "http://192.168.1.4:5173",
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",  # covers all Vercel preview + prod URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
