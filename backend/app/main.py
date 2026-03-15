@@ -10,16 +10,27 @@ from .core.database import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+from fastapi.routing import APIRoute
+
+def custom_generate_unique_id(route: APIRoute):
+    tag = route.tags[0] if route.tags else "api"
+    return f"{tag}-{route.name}"
+
 app = FastAPI(
     title="SPARK Production API",
     description="Scalable Production-Grade Analytics for Academic Records & Knowledge",
     version="2.0.0",
+    generate_unique_id_function=custom_generate_unique_id,
+    servers=[
+        {"url": "https://spark-backend-production-69db.up.railway.app", "description": "Production server"},
+        {"url": "/", "description": "Local development server"},
+    ],
 )
 
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, replace with specific origins
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -29,6 +40,16 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth")
 app.include_router(students.router, prefix="/api/students")
 app.include_router(admin.router, prefix="/api/admin")
+
+from fastapi.responses import RedirectResponse
+
+@app.get("/api/admin/subject-bottlenecks", include_in_schema=False)
+def redirect_bottlenecks():
+    return RedirectResponse("/api/admin/bottlenecks", status_code=301)
+
+@app.get("/api/admin/faculty-impact", include_in_schema=False)
+def redirect_faculty_impact():
+    return RedirectResponse("/api/admin/impact-matrix", status_code=301)
 
 @app.on_event("startup")
 async def startup():

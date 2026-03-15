@@ -164,9 +164,10 @@ async def build_hod_dashboard(
         trend_points AS (
             SELECT
                 semester,
-                ROUND(AVG(sgpa)::numeric, 2) AS avg_sgpa,
-                ROUND(AVG(pass_rate)::numeric, 2) AS pass_rate,
-                ROUND(AVG(avg_internal)::numeric, 2) AS avg_internal
+                ROUND(AVG(sgpa)::numeric, 2) AS average_gpa,
+                ROUND(AVG(pass_rate)::numeric, 2) AS average_attendance,
+                COUNT(*) AS student_count,
+                SUM(CASE WHEN sgpa < 5 THEN 1 ELSE 0 END) AS at_risk_count
             FROM semester_gpa
             GROUP BY semester
             ORDER BY semester
@@ -432,7 +433,7 @@ def _build_daily_briefing(
 
     if trend_points:
         latest = trend_points[-1]
-        lead += f" Current semester GPA is {latest.avg_sgpa} with {latest.pass_rate}% pass momentum."
+        lead += f" Current semester GPA is {latest.average_gpa} with {latest.average_attendance}% pass momentum."
 
     if risk_students:
         lead += f" {critical_risk_count} students need immediate intervention."

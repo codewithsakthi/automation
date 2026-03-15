@@ -1,3 +1,4 @@
+from __future__ import annotations
 from datetime import date, datetime
 from typing import List, Optional
 
@@ -150,25 +151,24 @@ class Subject(BaseModel):
         from_attributes = True
 
 
-class StudentMark(Mark):
+class StudentMarkResponse(BaseModel):
+    semester: int
     subject: Optional[Subject] = None
+    cit1_marks: Optional[float] = None
+    cit2_marks: Optional[float] = None
+    cit3_marks: Optional[float] = None
+    semester_exam_marks: Optional[float] = None
+    internal_marks: Optional[float] = None
+    total_marks: Optional[float] = None
+    grade: Optional[str] = None
+    result_status: Optional[str] = None
 
-
-class AttendanceBase(BaseModel):
+class AttendanceResponse(BaseModel):
     date: date
     hours_per_day: int
     status_array: List[str]
-
-
-class Attendance(AttendanceBase):
-    id: int
-    student_id: int
     total_present: int
     total_hours: int
-
-    class Config:
-        from_attributes = True
-
 
 class Program(BaseModel):
     id: int
@@ -178,11 +178,10 @@ class Program(BaseModel):
     class Config:
         from_attributes = True
 
-
 class StudentPerformance(Student):
     program: Optional[Program] = None
-    marks: List[StudentMark] = Field(default_factory=list)
-    attendance: List[Attendance] = Field(default_factory=list)
+    marks: List[StudentMarkResponse] = Field(default_factory=list)
+    attendance: List[AttendanceResponse] = Field(default_factory=list)
 
 
 class GradeDistributionItem(BaseModel):
@@ -392,34 +391,26 @@ class ContactInfoRecord(BaseModel):
 
 
 class FamilyDetailsRecord(BaseModel):
-    parent_guardian_name: Optional[str] = None
-    occupation: Optional[str] = None
-    parent_phone: Optional[str] = None
-    emergency_name: Optional[str] = None
-    emergency_address: Optional[str] = None
-    emergency_phone: Optional[str] = None
-    emergency_email: Optional[str] = None
     father_name: Optional[str] = None
     mother_name: Optional[str] = None
     parent_occupation: Optional[str] = None
-    parent_address: Optional[str] = None
+    parent_phone: Optional[str] = None
     parent_email: Optional[str] = None
+    parent_address: Optional[str] = None
     emergency_contact_name: Optional[str] = None
-    emergency_contact_phone: Optional[str] = None
     emergency_contact_relation: Optional[str] = None
-    emergency_contact_address: Optional[str] = None
+    emergency_contact_phone: Optional[str] = None
     emergency_contact_email: Optional[str] = None
+    emergency_contact_address: Optional[str] = None
 
 
 class PreviousAcademicRecord(BaseModel):
-    qualification: Optional[str] = None
-    school_name: Optional[str] = None
-    passing_year: Optional[str] = None
-    percentage: Optional[float] = None
     level: Optional[str] = None
+    qualification: Optional[str] = None
     institution: Optional[str] = None
-    year_passing: Optional[str] = None
     board_university: Optional[str] = None
+    year_passing: Optional[str] = None
+    percentage: Optional[float] = None
 
 
 class ExtraCurricularRecord(BaseModel):
@@ -554,8 +545,10 @@ class ScrapeResponse(BaseModel):
 
 
 class Token(BaseModel):
-    access_token: str
-    token_type: str
+    access_token: str = Field(..., description="JWT access token")
+    token_type: str = Field(..., description="Type of token, usually 'bearer'")
+    refresh_token: str = Field(..., description="Refresh token to get a new access token")
+    expires_in: int = Field(..., description="Token expiration in seconds")
 
 
 class SubjectDifficultyItem(BaseModel):
@@ -625,9 +618,14 @@ class FacultyPerformance(BaseModel):
     pass_percentage: float
     average_gpa: float
 
-class DepartmentHealth(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+class SemesterTrendItem(BaseModel):
+    semester: int
+    average_gpa: float
+    average_attendance: float
+    student_count: int
+    at_risk_count: int = 0
 
+class DepartmentHealth(BaseModel):
     overall_health_score: float = Field(ge=0, le=100)
     active_students: int = Field(ge=0)
     at_risk_count: int = Field(ge=0)
@@ -635,18 +633,17 @@ class DepartmentHealth(BaseModel):
     average_gpa: float = Field(ge=0, le=10)
     department_name: str = Field(min_length=2, max_length=80)
     daily_briefing: str = Field(min_length=1, max_length=400)
-    semester_trends: List[dict]
-    top_critical_subjects: List[SubjectDifficultyItem]
+    semester_trends: List[SemesterTrendItem] = Field(default_factory=list)
+    top_critical_subjects: List[SubjectDifficultyItem] = Field(default_factory=list)
 
 
 class TrendPoint(BaseModel):
-    model_config = ConfigDict(extra='forbid')
-
     semester: int = Field(ge=1, le=12)
     label: str
-    avg_sgpa: float = Field(ge=0, le=10)
-    pass_rate: float = Field(ge=0, le=100)
-    avg_internal: float = Field(ge=0, le=100)
+    average_gpa: float = Field(ge=0, le=10)
+    average_attendance: float = Field(ge=1, le=100)
+    student_count: int = Field(ge=0)
+    at_risk_count: int = Field(ge=0)
 
 
 class FailureHeatmapCell(BaseModel):
@@ -709,16 +706,20 @@ class HODDashboardResponse(BaseModel):
 class PaginationMeta(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
-    total: int = Field(ge=0)
-    limit: int = Field(ge=1)
-    offset: int = Field(ge=0)
+    total: int = Field(ge=0, description="Total number of items available")
+    limit: int = Field(ge=1, description="Number of items per page")
+    offset: int = Field(ge=0, description="Number of items skipped")
 
 
 class AdminDirectoryPage(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
-    items: List[AdminDirectoryStudent] = Field(default_factory=list)
+    items: List[AdminDirectoryStudent] = Field(..., description="List of student records")
     pagination: PaginationMeta
+
+    @property
+    def __required__(self):
+        return ["items", "pagination"]
 
 
 class LeaderboardEntry(BaseModel):
@@ -741,10 +742,10 @@ class LeaderboardEntry(BaseModel):
 class SubjectLeaderboardResponse(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
-    subject_code: str
-    subject_name: str
-    top_leaderboard: List[LeaderboardEntry] = Field(default_factory=list)
-    bottom_leaderboard: List[LeaderboardEntry] = Field(default_factory=list)
+    subject_code: str = Field(..., description="Unique subject code")
+    subject_name: str = Field(..., description="Subject name")
+    top_leaderboard: List[LeaderboardEntry] = Field(..., description="List of top performers")
+    bottom_leaderboard: List[LeaderboardEntry] = Field(..., description="List of low performers")
     pagination: PaginationMeta
 
 
@@ -849,7 +850,7 @@ class SubjectBottleneckItem(BaseModel):
 class SubjectBottleneckResponse(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
-    items: List[SubjectBottleneckItem] = Field(default_factory=list)
+    items: List[SubjectBottleneckItem] = Field(..., description="List of subject bottlenecks")
     pagination: PaginationMeta
 
 
@@ -871,7 +872,7 @@ class FacultyImpactMatrixItem(BaseModel):
 class FacultyImpactMatrixResponse(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
-    items: List[FacultyImpactMatrixItem] = Field(default_factory=list)
+    items: List[FacultyImpactMatrixItem] = Field(..., description="List of faculty impact metrics")
     pagination: PaginationMeta
 
 
@@ -892,7 +893,7 @@ class PlacementCandidate(BaseModel):
 class PlacementReadinessResponse(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
-    items: List[PlacementCandidate] = Field(default_factory=list)
+    items: List[PlacementCandidate] = Field(..., description="List of placement ready candidates")
     pagination: PaginationMeta
 
 
@@ -960,6 +961,13 @@ class AdminCohortAction(BaseModel):
     tone: str = Field(pattern='^(positive|warning|critical|info)$')
 
 
+class BatchHealthItem(BaseModel):
+    batch: str
+    average_gpa: float
+    average_attendance: float
+    at_risk_count: int
+    total_students: int
+
 class AdminCommandCenterResponse(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
@@ -976,8 +984,8 @@ class AdminCommandCenterResponse(BaseModel):
     backlog_clusters: List[AdminDirectoryStudent] = Field(default_factory=list)
     opportunity_students: List[AdminDirectoryStudent] = Field(default_factory=list)
     watchlist_students: List[StudentRiskScore] = Field(default_factory=list)
-    batch_health: List[dict] = Field(default_factory=list)
-    semester_pulse: List[dict] = Field(default_factory=list)
+    batch_health: List[BatchHealthItem] = Field(default_factory=list)
+    semester_pulse: List[SemesterTrendItem] = Field(default_factory=list)
     risk_summary: AdminRiskSummary
     placement_summary: AdminPlacementSummary
     leaderboard_snapshots: List[AdminLeaderboardSnapshot] = Field(default_factory=list)
@@ -990,5 +998,13 @@ class AdminCommandCenterResponse(BaseModel):
 class RiskRegistryResponse(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
-    items: List[StudentRiskScore] = Field(default_factory=list)
+    items: List[StudentRiskScore] = Field(..., description="List of at-risk students")
     pagination: PaginationMeta
+
+
+# Rebuild models to handle nested structures and forward references
+StudentPerformance.model_rebuild()
+DepartmentHealth.model_rebuild()
+HODDashboardResponse.model_rebuild()
+AdminCommandCenterResponse.model_rebuild()
+RiskRegistryResponse.model_rebuild()

@@ -561,6 +561,8 @@ async def get_subject_bottlenecks(
     order_sql = {
         "failure_rate": "failure_rate DESC",
         "marks_stddev": "marks_stddev DESC",
+        "avg_grade": "current_average_marks ASC",
+        "student_count": "attempts DESC",
         "drift": "drift_from_history ASC",
     }.get(sort_by, "failure_rate DESC")
 
@@ -801,7 +803,17 @@ async def _get_batch_health(db: AsyncSession, curriculum_credits: dict[str, floa
         ORDER BY avg_gpa DESC, avg_attendance DESC
         """
     )
-    return [dict(row) for row in (await db.execute(query)).mappings().all()]
+    return [
+        {
+            "batch": row["batch"],
+            "average_gpa": float(row["avg_gpa"] or 0),
+            "average_attendance": float(row["avg_attendance"] or 0),
+            "at_risk_count": int(row["backlog_students"] or 0),
+            "total_students": 100 # Placeholder for total students
+        }
+        for row in (await db.execute(query)).mappings().all()
+    ]
+
 
 
 async def _get_semester_pulse(db: AsyncSession, curriculum_credits: dict[str, float]) -> list[dict]:
@@ -819,7 +831,17 @@ async def _get_semester_pulse(db: AsyncSession, curriculum_credits: dict[str, fl
         ORDER BY current_semester
         """
     )
-    return [dict(row) for row in (await db.execute(query)).mappings().all()]
+    return [
+        {
+            "semester": int(row["semester"]),
+            "average_gpa": float(row["avg_gpa"] or 0),
+            "average_attendance": float(row["avg_attendance"] or 0),
+            "student_count": int(row["students"] or 0),
+            "at_risk_count": int(row["backlog_students"] or 0)
+        }
+        for row in (await db.execute(query)).mappings().all()
+    ]
+
 
 
 async def _get_risk_summary(db: AsyncSession, curriculum_credits: dict[str, float]) -> schemas.AdminRiskSummary:

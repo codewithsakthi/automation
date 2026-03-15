@@ -135,7 +135,7 @@ export default function AdminDashboard() {
 
   const { data: leaderboard } = useQuery<SubjectLeaderboardResponse>({
     queryKey: ['subject-leaderboard', selectedSubjectCode],
-    queryFn: () => api.get(`/api/admin/subject-leaderboard?subject_code=${selectedSubjectCode}&limit=5&offset=0`),
+    queryFn: () => api.get(`/api/admin/subject-leaderboard/${selectedSubjectCode}?limit=5&offset=0`),
     enabled: Boolean(selectedSubjectCode),
     staleTime: 60_000,
   });
@@ -204,8 +204,8 @@ export default function AdminDashboard() {
     () =>
       (data?.department_health.semester_trends || []).map((point) => ({
         label: `Sem ${String(point.semester ?? '')}`,
-        avg_sgpa: Number(point.avg_sgpa ?? 0) * 10,
-        pass_rate: Number(point.pass_rate ?? 0),
+        average_gpa: Number(point.average_gpa ?? 0) * 10,
+        average_attendance: Number(point.average_attendance ?? 0),
       })),
     [data],
   );
@@ -367,7 +367,7 @@ export default function AdminDashboard() {
               Focus Bottleneck
             </button>
           </div>
-          <div className="h-80">
+          <div className="h-80" style={{ minHeight: 320 }}>
             {isLoading ? (
               <div className="skeleton h-full rounded-[1.5rem]" />
             ) : (
@@ -492,7 +492,7 @@ export default function AdminDashboard() {
             ))}
           </div>
 
-          <div className="mt-5 h-48">
+          <div className="mt-5 h-48" style={{ minHeight: 200 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={leaderboardSpread}>
                 <CartesianGrid stroke="rgba(148,163,184,0.16)" strokeDasharray="4 4" vertical={false} />
@@ -847,15 +847,15 @@ export default function AdminDashboard() {
             </div>
             <Zap size={18} className="text-primary" />
           </div>
-          <div className="h-72">
+          <div className="h-72" style={{ minHeight: 280 }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trendData}>
                 <CartesianGrid stroke="rgba(148,163,184,0.16)" strokeDasharray="4 4" vertical={false} />
                 <XAxis dataKey="label" tickLine={false} axisLine={false} />
                 <YAxis tickLine={false} axisLine={false} domain={[0, 100]} />
                 <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid var(--color-border)', background: 'var(--panel)' }} />
-                <Line type="monotone" dataKey="pass_rate" stroke="var(--chart-1)" strokeWidth={3} />
-                <Line type="monotone" dataKey="avg_sgpa" stroke="var(--chart-2)" strokeWidth={3} />
+                <Line type="monotone" dataKey="average_attendance" stroke="var(--chart-1)" strokeWidth={3} />
+                <Line type="monotone" dataKey="average_gpa" stroke="var(--chart-2)" strokeWidth={3} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -873,15 +873,15 @@ export default function AdminDashboard() {
               <div key={String(batch.batch)} className="row-card">
                 <div>
                   <p className="text-sm font-semibold text-foreground">{batch.batch}</p>
-                  <p className="text-xs text-muted-foreground">{batch.backlog_students} backlog students</p>
+                  <p className="text-xs text-muted-foreground">{batch.at_risk_count} backlog students</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-right text-xs">
                   <div>
-                    <p className="font-black text-foreground">{batch.avg_gpa}</p>
+                    <p className="font-black text-foreground">{batch.average_gpa}</p>
                     <p className="text-muted-foreground">Avg GPA</p>
                   </div>
                   <div>
-                    <p className="font-black text-foreground">{batch.avg_attendance}%</p>
+                    <p className="font-black text-foreground">{batch.average_attendance}%</p>
                     <p className="text-muted-foreground">Attendance</p>
                   </div>
                 </div>
@@ -900,15 +900,15 @@ export default function AdminDashboard() {
               <div key={String(semester.semester)} className="row-card">
                 <div>
                   <p className="text-sm font-semibold text-foreground">Semester {semester.semester}</p>
-                  <p className="text-xs text-muted-foreground">{semester.students} students | {semester.backlog_students} backlog students</p>
+                  <p className="text-xs text-muted-foreground">{semester.student_count} students | {semester.at_risk_count} backlog students</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-right text-xs">
                   <div>
-                    <p className="font-black text-foreground">{semester.avg_gpa}</p>
+                    <p className="font-black text-foreground">{semester.average_gpa}</p>
                     <p className="text-muted-foreground">Avg GPA</p>
                   </div>
                   <div>
-                    <p className="font-black text-foreground">{semester.avg_attendance}%</p>
+                    <p className="font-black text-foreground">{semester.average_attendance}%</p>
                     <p className="text-muted-foreground">Attendance</p>
                   </div>
                 </div>
