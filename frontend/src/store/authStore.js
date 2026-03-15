@@ -1,34 +1,65 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
+/**
+ * Authentication Store for SPARK
+ * Uses Zustand with persist middleware for session management.
+ */
 export const useAuthStore = create(
   persist(
     (set) => ({
       user: null,
-      token: localStorage.getItem('token') || null,
-      refreshToken: localStorage.getItem('refreshToken') || null,
+      token: null,
+      refreshToken: null,
+      hasConsented: false,
       
+      /**
+       * Set authentication details
+       * @param {Object} user 
+       * @param {string} token 
+       * @param {string} refreshToken 
+       */
       setAuth: (user, token, refreshToken) => {
-        if (token) localStorage.setItem('token', token);
-        if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
         set({ user, token, refreshToken });
       },
-      
-      logout: () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        set({ user: null, token: null, refreshToken: null });
+
+      /**
+       * Updates the consent status
+       * @param {boolean} consented 
+       */
+      setConsent: (consented) => {
+        set({ hasConsented: consented });
       },
       
+      /**
+       * Clears the current session and all related persistent data
+       */
+      logout: () => {
+        // Clear non-Zustand persistent data
+        localStorage.removeItem('syncDob');
+        
+        // Reset auth state
+        set({ 
+          user: null, 
+          token: null, 
+          refreshToken: null,
+          // We don't reset hasConsented as it's per-device compliance
+        });
+      },
+      
+      /**
+       * Partially update user profile
+       * @param {Object} user 
+       */
       updateUser: (user) => {
-        localStorage.setItem('user', JSON.stringify(user));
-        set({ user });
+        set((state) => ({ 
+          user: { ...state.user, ...user } 
+        }));
       },
     }),
     {
       name: 'spark-auth-storage',
-      getStorage: () => localStorage,
+      storage: createJSONStorage(() => localStorage),
     }
   )
 );
