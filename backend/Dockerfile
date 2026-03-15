@@ -1,32 +1,36 @@
-# Use an official Python runtime as a parent image
+# Base image
 FROM python:3.11-slim
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+# Environment settings
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Set the working directory in the container
+# Working directory
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y \
+    curl \
     build-essential \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Install cloudflared
+RUN curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+    -o /usr/local/bin/cloudflared \
+    && chmod +x /usr/local/bin/cloudflared
 
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code
+# Copy project
 COPY . .
 
-# Expose the port the app runs on
+# Expose port
 EXPOSE 8000
 
-# Create a non-root user and switch to it
-RUN useradd -m appuser && chown -R appuser:appuser /app
-USER appuser
-
-# Command to run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run FastAPI + Cloudflare tunnel
+CMD sh -c "\
+    uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} & \
+    cloudflared tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}"
