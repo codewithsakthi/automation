@@ -14,8 +14,6 @@ import { AlertTriangle, ArrowUp, BadgeCheck, Download, RefreshCw, ShieldAlert, T
 import api from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
-import ThemeToggle from '../components/ThemeToggle';
-import SpotlightSearch from '../components/SpotlightSearch';
 import StudentProfile360 from '../components/StudentProfile360';
 import type {
   AdminCohortAction,
@@ -267,16 +265,7 @@ export default function AdminDashboard() {
   const currentStudentPage = studentDirectory ? Math.floor(studentDirectory.pagination.offset / studentDirectory.pagination.limit) + 1 : 1;
 
   return (
-    <div className="hod-shell pb-24 lg:pb-10">
-      <button
-        type="button"
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card/95 text-foreground shadow-[0_18px_50px_rgba(15,23,42,0.24)] backdrop-blur md:right-8"
-        aria-label="Scroll to top"
-        title="Scroll to top"
-      >
-        <ArrowUp size={18} />
-      </button>
+    <div className="w-full pb-24 lg:pb-10">
 
       <header className="hero-panel">
         <div className="space-y-3">
@@ -290,8 +279,6 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <SpotlightSearch onSelect={onSpotlightSelect} />
-          <ThemeToggle theme={theme} onToggle={toggleTheme} className="!bg-white/10 !border-white/15 !text-white hover:!bg-white/15" />
           <button type="button" className="hero-button" onClick={() => exportWithToken('/api/admin/exports/batch-summary.xlsx', 'mca-batch-summary.xlsx')}>
             <Download size={16} />
             Excel Summary
@@ -300,11 +287,10 @@ export default function AdminDashboard() {
             <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
             Refresh
           </button>
-          <button type="button" className="hero-button" onClick={logout}>Sign out</button>
         </div>
       </header>
 
-      <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section id="command-center" className="scroll-mt-6 mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {isLoading ? (
           <>
             <div className="skeleton h-40 rounded-[1.75rem]" />
@@ -323,7 +309,7 @@ export default function AdminDashboard() {
       </section>
 
       <section className="mt-6 grid gap-4 xl:grid-cols-[1fr_1fr]">
-        <article className="panel">
+        <article id="risk-radar" className="panel scroll-mt-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="text-lg font-semibold text-foreground">Risk Radar</p>
@@ -339,7 +325,7 @@ export default function AdminDashboard() {
           </div>
         </article>
 
-        <article className="panel">
+        <article id="placement-pipeline" className="panel scroll-mt-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="text-lg font-semibold text-foreground">Placement Pipeline</p>
@@ -357,7 +343,7 @@ export default function AdminDashboard() {
       </section>
 
       <section className="mt-6 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-        <article className="panel">
+        <article id="bottlenecks" className="panel scroll-mt-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="text-lg font-semibold text-foreground">Hardest Subjects vs Historical Baseline</p>
@@ -384,7 +370,7 @@ export default function AdminDashboard() {
           </div>
         </article>
 
-        <article className="panel">
+        <article id="directory" className="panel scroll-mt-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="text-lg font-semibold text-foreground">Red-Zone Alerts</p>
@@ -415,15 +401,15 @@ export default function AdminDashboard() {
         </article>
       </section>
 
-      <section className="mt-6 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-        <article className="panel">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
+      <section className="mt-6">
+        <article id="leaderboard" className="panel scroll-mt-6">
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0">
               <p className="text-lg font-semibold text-foreground">Subject Leaderboard Engine</p>
-              <p className="text-sm text-muted-foreground">Class rank, batch rank, and percentile are computed with PostgreSQL window functions.</p>
+              <p className="text-sm text-muted-foreground">Class rank, batch rank, and percentile via PostgreSQL window functions.</p>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <select className="input-field !py-2" value={selectedSemester} onChange={(event) => setSelectedSemester(event.target.value)}>
+            <div className="flex flex-col gap-2 sm:flex-row flex-shrink-0">
+              <select className="input-field !py-2 w-full sm:w-auto" value={selectedSemester} onChange={(event) => setSelectedSemester(event.target.value)}>
                 <option value="ALL">All Semesters</option>
                 {semesterOptions.map((semester) => (
                   <option key={semester} value={String(semester)}>
@@ -431,7 +417,7 @@ export default function AdminDashboard() {
                   </option>
                 ))}
               </select>
-              <select className="input-field !py-2" value={selectedSubjectCode} onChange={(event) => setSelectedSubjectCode(event.target.value)}>
+              <select className="input-field !py-2 w-full sm:w-48" value={selectedSubjectCode} onChange={(event) => setSelectedSubjectCode(event.target.value)}>
                 {filteredSubjects.map((subject) => (
                   <option key={subject.subject_code} value={subject.subject_code}>
                     {subject.subject_code} | {subject.subject_name}
@@ -504,46 +490,10 @@ export default function AdminDashboard() {
             </ResponsiveContainer>
           </div>
         </article>
-
-        <article className="panel">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <p className="text-lg font-semibold text-foreground">Faculty Impact Matrix</p>
-              <p className="text-sm text-muted-foreground">Separate subject difficulty from teaching cohort effect.</p>
-            </div>
-            <BadgeCheck size={18} className="text-primary" />
-          </div>
-          <div className="space-y-3">
-            {data?.faculty_impact?.length ? data.faculty_impact.map((item) => (
-              <div key={`${item.faculty_id}-${item.subject_code}`} className="row-card">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{item.faculty_name}</p>
-                  <p className="text-xs text-muted-foreground">{item.subject_code} | {item.subject_name}</p>
-                </div>
-                <div className="grid grid-cols-3 gap-3 text-right text-xs">
-                  <div>
-                    <p className="font-black text-foreground">{item.failure_rate}%</p>
-                    <p className="text-muted-foreground">Cohort</p>
-                  </div>
-                  <div>
-                    <p className="font-black text-foreground">{item.subject_failure_rate}%</p>
-                    <p className="text-muted-foreground">Subject</p>
-                  </div>
-                  <div>
-                    <p className={`font-black ${item.cohort_delta <= -8 ? 'text-emerald-600' : item.cohort_delta >= 8 ? 'text-rose-600' : 'text-foreground'}`}>
-                      {item.cohort_delta}
-                    </p>
-                    <p className="text-muted-foreground">Delta</p>
-                  </div>
-                </div>
-              </div>
-            )) : <div className="empty-card text-sm text-muted-foreground">No faculty assignments are mapped yet. Populate `faculty_subject_assignments` to unlock this matrix.</div>}
-          </div>
-        </article>
       </section>
 
       <section className="mt-6 grid gap-4 xl:grid-cols-[1fr_1fr]">
-        <article className="panel">
+        <article id="top-performers" className="panel scroll-mt-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="text-lg font-semibold text-foreground">Top Performers</p>
@@ -558,7 +508,7 @@ export default function AdminDashboard() {
           </div>
         </article>
 
-        <article className="panel">
+        <article id="watchlist" className="panel scroll-mt-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="text-lg font-semibold text-foreground">Intervention Watchlist</p>
@@ -933,13 +883,14 @@ export default function AdminDashboard() {
             />
           </div>
 
-          <div className="overflow-hidden rounded-[1.5rem] border border-border/70">
-            <table className="w-full text-sm">
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto rounded-[1.5rem] border border-border/70">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-muted/50">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
-                      <th key={header.id} className="px-4 py-3 text-left text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground">
+                      <th key={header.id} className="px-4 py-3 text-left text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground whitespace-nowrap">
                         {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                       </th>
                     ))}
@@ -950,7 +901,7 @@ export default function AdminDashboard() {
                 {table.getRowModel().rows.map((row) => (
                   <tr key={row.id} className="border-t border-border/60 bg-card/70">
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-4 py-3 text-foreground">
+                      <td key={cell.id} className="px-4 py-3 text-foreground whitespace-nowrap">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
@@ -958,6 +909,26 @@ export default function AdminDashboard() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile card fallback */}
+          <div className="grid gap-3 sm:hidden">
+            {table.getRowModel().rows.map((row) => {
+              const d = row.original as any;
+              return (
+                <div key={row.id} className="row-card">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{d.student_name}</p>
+                    <p className="text-xs text-muted-foreground">{d.roll_no}</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 text-right text-xs">
+                    <div><p className="font-black text-foreground">{d.cgpa}</p><p className="text-muted-foreground">CGPA</p></div>
+                    <div><p className="font-black text-foreground">{d.attendance_percentage}%</p><p className="text-muted-foreground">Attn</p></div>
+                    <div><p className={`font-black ${d.placement_ready ? 'text-emerald-600' : 'text-rose-600'}`}>{d.placement_ready ? 'Ready' : 'Not yet'}</p><p className="text-muted-foreground">Status</p></div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">

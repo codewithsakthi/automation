@@ -59,6 +59,12 @@
   html {
     background: var(--color-background);
     scroll-behavior: smooth;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+
+  html::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
   }
 
   body {
@@ -78,14 +84,44 @@
 
   button,
   input,
-  select {
+  select,
+  textarea {
     font: inherit;
+    color: inherit;
+  }
+
+  /* Custom minimal scrollbar for those who MUST have it */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--color-muted-foreground);
   }
 }
 
 @layer components {
   .container-premium {
-    @apply mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8;
+    @apply mx-auto w-full px-4 py-6 sm:px-6 lg:px-10;
+  }
+
+  .hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .resize-handle {
+    @apply absolute right-0 top-0 h-full w-1 cursor-col-resize transition-colors hover:bg-primary/40 active:bg-primary/60;
   }
 
   .bento-grid {
@@ -187,4 +223,45 @@
 
 .recharts-default-tooltip {
   border-radius: 16px !important;
+}
+
+/* ======================= */
+/* Mobile Responsiveness   */
+/* ======================= */
+@media (max-width: 640px) {
+  .panel {
+    padding: 1rem;
+    border-radius: 1.25rem;
+  }
+
+  .hero-panel {
+    padding: 1.25rem;
+    border-radius: 1.5rem;
+    gap: 1rem;
+  }
+
+  .metric-card {
+    padding: 1rem;
+    border-radius: 1.25rem;
+  }
+
+  .bento-card {
+    border-radius: 1.25rem;
+    padding: 1rem;
+  }
+
+  h1.text-4xl {
+    font-size: 1.75rem;
+  }
+
+  h1.text-5xl, h1.md\:text-5xl {
+    font-size: 1.875rem;
+  }
+}
+
+/* Ensure recharts containers don't overflow on mobile */
+@media (max-width: 768px) {
+  .recharts-responsive-container {
+    min-width: 0 !important;
+  }
 }

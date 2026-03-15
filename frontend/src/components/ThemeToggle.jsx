@@ -15,7 +15,7 @@ const ThemeToggle = ({ theme, onToggle, className = '' }) => {
          <SunMedium size={16} className={`absolute inset-0 transition-all duration-300 ${isLight ? 'opacity-0 -rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'}`} />
          <Moon size={16} className={`absolute inset-0 transition-all duration-300 ${!isLight ? 'opacity-0 rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'}`} />
       </div>
-      <span className="text-foreground tracking-tight">{isLight ? 'Dark Focus' : 'Light Mode'}</span>
+      <span className="hidden md:inline text-foreground tracking-tight">{isLight ? 'Dark Focus' : 'Light Mode'}</span>
     </button>
   );
 };

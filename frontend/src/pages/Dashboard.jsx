@@ -119,13 +119,10 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="container-premium pb-20 animate-in fade-in duration-700">
+    <div className="w-full">
       {/* Header Section */}
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-3">
-            <Sparkles size={14} /> SPARK Student Dashboard
-          </span>
           <h1 className="text-4xl font-extrabold tracking-tight mb-2">
             Welcome, <span className="text-gradient">{user?.name || 'Academic'}</span>
           </h1>
@@ -141,9 +138,6 @@ const Dashboard = () => {
           >
             {syncMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
             <span>Sync Records</span>
-          </button>
-          <button onClick={logout} className="p-2.5 rounded-xl border border-border bg-card hover:bg-muted transition-colors text-muted-foreground">
-            <LogOut size={20} />
           </button>
         </div>
       </header>

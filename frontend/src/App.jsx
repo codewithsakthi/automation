@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import MobileNav from './components/MobileNav';
+import DashboardLayout from './components/DashboardLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
@@ -52,7 +52,9 @@ function App() {
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <DashboardLayout>
+                      <Dashboard />
+                    </DashboardLayout>
                   </ProtectedRoute>
                 }
               />
@@ -61,7 +63,9 @@ function App() {
                 path="/admin"
                 element={
                   <ProtectedRoute adminOnly>
-                    <AdminDashboard />
+                    <DashboardLayout>
+                      <AdminDashboard />
+                    </DashboardLayout>
                   </ProtectedRoute>
                 }
               />
@@ -69,13 +73,7 @@ function App() {
               <Route path="*" element={<Navigate to={isAuthenticated ? (isAdmin ? '/admin' : '/dashboard') : '/login'} replace />} />
             </Routes>
           </Suspense>
-          
-          {isAuthenticated && (
-            <MobileNav
-              role={user?.role?.name || user?.role}
-              onLogout={handleLogout}
-            />
-          )}
+
         </div>
       </Router>
     </QueryClientProvider>
