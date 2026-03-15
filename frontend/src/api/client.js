@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
 const VITE_API_URL = import.meta.env.VITE_API_URL;
-const FALLBACK_URL = 'https://spark-backend.up.railway.app';
+const FALLBACK_URL = 'https://spark-backend-n5s2.onrender.com';
 
 let API_BASE = VITE_API_URL || FALLBACK_URL;
 
