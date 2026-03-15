@@ -137,7 +137,12 @@ export default function Sidebar({ width, onResizeStart, isResizing }: SidebarPro
               href="?tab=Security" 
               isActive={activeTab === 'Security'} 
             />
-            <NavItem icon={Users} label="Student Directory" href="#directory" />
+            <NavItem 
+              icon={Users} 
+              label="Student Directory" 
+              href="?tab=Students" 
+              isActive={activeTab === 'Students'} 
+            />
             <NavItem icon={ShieldAlert} label="Watchlist" href="#watchlist" />
             <NavItem icon={Trophy} label="Top Performers" href="#top-performers" />
           </NavGroup>

@@ -12,11 +12,11 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const ADMIN_ITEMS = [
-  { label: 'Home',     icon: LayoutDashboard, sectionId: 'command-center' },
-  { label: 'Risk',     icon: ShieldAlert,     sectionId: 'risk-radar' },
-  { label: 'Leaders',  icon: Trophy,          sectionId: 'leaderboard' },
-  { label: 'Pipeline', icon: Target,          sectionId: 'placement-pipeline' },
-  { label: 'Students', icon: Users,           sectionId: 'directory' },
+  { label: 'Home',     icon: LayoutDashboard, sectionId: 'command-center',    tab: '' },
+  { label: 'Risk',     icon: ShieldAlert,     sectionId: 'risk-radar',        tab: '' },
+  { label: 'Leaders',  icon: Trophy,          sectionId: 'leaderboard',       tab: '' },
+  { label: 'Pipeline', icon: Target,          sectionId: 'placement-pipeline',tab: '' },
+  { label: 'Students', icon: Users,           sectionId: '',                   tab: 'Students' },
 ];
 
 const STUDENT_ITEMS = [
@@ -38,13 +38,17 @@ export default function MobileBottomNav({ role = 'admin' }: MobileBottomNavProps
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<string>('command-center');
 
-  // Track which section is in view using the scroll container
+  // Derive active tab from URL
+  const searchParams = new URLSearchParams(location.search);
+  const currentTab = searchParams.get('tab') || '';
+
+  // Track which section is in view (only when on Overview tab)
   useEffect(() => {
-    if (role !== 'admin') return;
+    if (role !== 'admin' || currentTab !== '') return;
     const container = document.getElementById(MAIN_SCROLL_ID);
     if (!container) return;
 
-    const sectionIds = ADMIN_ITEMS.map((i) => i.sectionId);
+    const sectionIds = ADMIN_ITEMS.filter(i => i.sectionId).map((i) => i.sectionId);
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -64,14 +68,29 @@ export default function MobileBottomNav({ role = 'admin' }: MobileBottomNavProps
     });
 
     return () => observer.disconnect();
-  }, [role]);
+  }, [role, currentTab]);
+
+  const handleAdminItemClick = (item: typeof ADMIN_ITEMS[0]) => {
+    if (item.tab) {
+      // Navigate to a tab page via URL
+      navigate(`/admin?tab=${item.tab}`);
+    } else if (item.sectionId) {
+      // Navigate back to overview first if on another tab
+      if (currentTab !== '') {
+        navigate('/admin');
+        // Small delay to let overview render before scrolling
+        setTimeout(() => scrollToSection(item.sectionId), 150);
+      } else {
+        scrollToSection(item.sectionId);
+      }
+    }
+  };
 
   const scrollToSection = (sectionId: string) => {
     const container = document.getElementById(MAIN_SCROLL_ID);
     const target = document.getElementById(sectionId);
     if (!container || !target) return;
 
-    // Calculate offset relative to the scroll container
     const containerRect = container.getBoundingClientRect();
     const targetRect = target.getBoundingClientRect();
     const offset = targetRect.top - containerRect.top + container.scrollTop - 16;
@@ -87,12 +106,15 @@ export default function MobileBottomNav({ role = 'admin' }: MobileBottomNavProps
         <div className="mx-3 mb-3 flex items-center justify-around rounded-3xl border border-border/40 bg-card/80 px-2 py-2 shadow-2xl backdrop-blur-2xl ring-1 ring-black/5">
           {ADMIN_ITEMS.map((item) => {
             const Icon = item.icon;
-            const isActive = activeSection === item.sectionId;
+            // Active state: tab items match currentTab, section items match activeSection
+            const isActive = item.tab
+              ? currentTab === item.tab
+              : currentTab === '' && activeSection === item.sectionId;
             return (
               <button
                 key={item.label}
                 type="button"
-                onClick={() => scrollToSection(item.sectionId)}
+                onClick={() => handleAdminItemClick(item)}
                 className={`flex flex-1 flex-col items-center gap-1 rounded-2xl py-2.5 transition-all duration-200 ${
                   isActive
                     ? 'bg-primary/10 text-primary'
@@ -110,8 +132,6 @@ export default function MobileBottomNav({ role = 'admin' }: MobileBottomNavProps
   }
 
   // Student: tab-based navigation
-  const searchParams = new URLSearchParams(location.search);
-  const currentTab = searchParams.get('tab') || '';
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50"

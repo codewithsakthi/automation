@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ThemeToggle from './ThemeToggle';
 import MobileBottomNav from './MobileBottomNav';
+import SpotlightSearch from './SpotlightSearch';
 import { useThemeStore } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
 
@@ -23,13 +24,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { theme, toggleTheme } = useThemeStore();
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'Overview';
-  const role = (user as any)?.role === 'admin' ? 'admin' : 'student';
+  const role = (user as any)?.role === 'admin' || (user as any)?.role?.name === 'admin' ? 'admin' : 'student';
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleSpotlightSelect = (result: any) => {
+    if (result.entity_type === 'student') {
+      const params = new URLSearchParams(searchParams);
+      params.set('rollNo', result.entity_id);
+      setSearchParams(params);
+    }
   };
 
   // Close menu on outside click
@@ -99,6 +108,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                  activeTab === 'Attendance' ? 'Attendance Insight' : 
                  activeTab === 'Profile' ? 'Profile Settings' : 
                  activeTab === 'Security' ? 'Security Access' : 
+                 activeTab === 'Students' ? 'Student Management' :
                  activeTab}
               </span>
             </div>
@@ -106,6 +116,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
           {/* Right: actions */}
           <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
+            {/* Spotlight Search — admin only */}
+            {role === 'admin' && (
+              <SpotlightSearch onSelect={handleSpotlightSelect} />
+            )}
+
             {/* Search — desktop only */}
             <div className="relative group hidden md:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={16} />
