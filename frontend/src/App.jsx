@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './components/DashboardLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import PwaInstallPrompt from './components/PwaInstallPrompt';
 import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -40,6 +41,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
+        <PwaInstallPrompt />
         <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
           <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm font-semibold text-muted-foreground">Loading workspace...</div>}>
             <Routes>
