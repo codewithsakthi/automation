@@ -22,7 +22,7 @@ app = FastAPI(
     version="2.0.0",
     generate_unique_id_function=custom_generate_unique_id,
     servers=[
-        {"url": "https://spark-backend.up.railway.app", "description": "Production server"},
+        {"url": "https://spark-backend-production-6bfd.up.railway.app/", "description": "Production server"},
         {"url": "/", "description": "Local development server"},
     ],
 )
