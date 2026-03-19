@@ -12,7 +12,7 @@ if (API_BASE && !API_BASE.startsWith('http')) {
 }
 
 const api = axios.create({
-  baseURL: API_BASE,
+  baseURL: `${API_BASE}/api/v1`,
   timeout: 45000,
 });
 
@@ -36,7 +36,9 @@ api.interceptors.response.use(
 
       if (refreshToken) {
         try {
-          const response = await axios.post(`${API_BASE}/api/auth/refresh?refresh_token=${refreshToken}`);
+          const response = await axios.post(`${API_BASE}/api/v1/auth/refresh`, {
+            refresh_token: refreshToken
+          });
           const { access_token } = response.data;
 
           useAuthStore.getState().setAuth(

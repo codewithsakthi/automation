@@ -308,6 +308,8 @@ class StudentService:
                 detail="Your academic profile looks strong! Keep up the consistent performance.",
                 tone="positive"
             ))
+        # Clamp risk score to [0, 100]
+        risk_score = max(0, min(100, risk.risk_score))
 
         return schemas.StudentCommandCenterResponse(
             roll_no=student.roll_no,

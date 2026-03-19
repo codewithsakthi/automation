@@ -205,8 +205,8 @@ class GradeDistributionItem(BaseModel):
 class SemesterPerformanceItem(BaseModel):
     semester: int
     subject_count: int
-    average_internal: float
-    average_grade_points: float
+    average_internal: Optional[float] = 0.0
+    average_grade_points: Optional[float] = 0.0
     backlog_count: int
 
 
@@ -215,7 +215,7 @@ class RiskSubjectItem(BaseModel):
     course_code: str
     semester: int
     grade: str
-    internal_marks: float
+    internal_marks: Optional[float] = 0.0
     risk_reason: str
 
 
@@ -224,7 +224,7 @@ class StrengthSubjectItem(BaseModel):
     course_code: str
     semester: int
     grade: str
-    score: float
+    score: Optional[float] = 0.0
 
 
 class AttendanceInsight(BaseModel):
@@ -271,10 +271,10 @@ class StudentRiskScore(BaseModel):
 
     roll_no: str
     name: str
-    risk_score: float = Field(ge=0, le=100)
-    attendance_factor: float = Field(ge=0, le=100)
-    internal_marks_factor: float = Field(ge=0, le=100)
-    gpa_drop_factor: float = Field(ge=0)
+    risk_score: Optional[float] = Field(default=0.0, ge=0, le=100)
+    attendance_factor: Optional[float] = Field(default=0.0, ge=0, le=100)
+    internal_marks_factor: Optional[float] = Field(default=0.0, ge=0, le=100)
+    gpa_drop_factor: Optional[float] = Field(default=0.0, ge=0)
     is_at_risk: bool
     risk_level: str = Field(pattern='^(Critical|High|Moderate|Low)$')
     alerts: List[str]
@@ -323,6 +323,7 @@ class AdminStudentSnapshot(BaseModel):
     reg_no: Optional[str] = None
     name: str
     batch: Optional[str] = None
+    section: Optional[str] = None
     program_name: Optional[str] = None
     current_semester: Optional[int] = None
     average_grade_points: float
@@ -336,8 +337,8 @@ class AdminOverview(BaseModel):
     total_staff: int
     total_admins: int
     students_needing_attention: int
-    average_attendance: float
-    average_grade_points: float
+    average_attendance: Optional[float] = 0.0
+    average_grade_points: Optional[float] = 0.0
     recent_students: List[AdminStudentSnapshot] = Field(default_factory=list)
     top_performers: List[AdminStudentSnapshot] = Field(default_factory=list)
     attention_required: List[AdminStudentSnapshot] = Field(default_factory=list)
@@ -352,13 +353,15 @@ class AdminDirectoryStudent(BaseModel):
     phone_primary: Optional[str] = None
     batch: Optional[str] = None
     current_semester: Optional[int] = None
+    section: Optional[str] = None
     marks_count: int = 0
     attendance_count: int = 0
-    attendance_percentage: float = 0.0
-    average_grade_points: float = 0.0
-    average_internal_percentage: float = 0.0
+    attendance_percentage: Optional[float] = 0.0
+    average_grade_points: Optional[float] = 0.0
+    average_internal_percentage: Optional[float] = 0.0
     backlogs: int = 0
     rank: Optional[int] = None
+    is_initial_password: bool = False
 
 
 class AdminDirectoryInsightItem(BaseModel):
@@ -688,10 +691,10 @@ class StudentStrengthRadar(BaseModel):
 
     roll_no: str
     name: str
-    attendance: float = Field(ge=0, le=100)
-    internals: float = Field(ge=0, le=100)
-    gpa: float = Field(ge=0, le=10)
-    consistency: float = Field(ge=0, le=100)
+    attendance: Optional[float] = Field(default=0.0, ge=0, le=100)
+    internals: Optional[float] = Field(default=0.0, ge=0, le=100)
+    gpa: Optional[float] = Field(default=0.0, ge=0, le=10)
+    consistency: Optional[float] = Field(default=0.0, ge=0, le=100)
 
 
 class DashboardMetric(BaseModel):
@@ -824,8 +827,10 @@ class Student360Profile(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     roll_no: str
+    reg_no: Optional[str] = None
     student_name: str
     batch: Optional[str] = None
+    section: Optional[str] = None
     current_semester: Optional[int] = None
     overall_gpa: float = Field(ge=0, le=10)
     attendance_percentage: float = Field(ge=0, le=100)
@@ -1021,3 +1026,50 @@ DepartmentHealth.model_rebuild()
 HODDashboardResponse.model_rebuild()
 AdminCommandCenterResponse.model_rebuild()
 RiskRegistryResponse.model_rebuild()
+
+class StaffSubject(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    subject_id: int
+    subject_name: str
+    course_code: str
+    semester: int
+    section: Optional[str] = None
+    academic_year: Optional[str] = None
+    student_count: int = 0
+
+class StaffStudentMarkUpdate(BaseModel):
+    student_id: int
+    subject_id: int
+    semester: int
+    cit1_marks: Optional[float] = None
+    cit2_marks: Optional[float] = None
+    cit3_marks: Optional[float] = None
+    semester_exam_marks: Optional[float] = None
+
+class StaffDashboardResponse(BaseModel):
+    staff_id: int
+    name: str
+    department: Optional[str] = None
+    subjects: List[StaffSubject] = Field(default_factory=list)
+    total_students_handled: int = 0
+    recent_marks_updates: List[dict] = Field(default_factory=list)
+
+class StaffTimeTableEntry(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    day_of_week: int
+    hour: int
+    subject_id: int
+    subject_name: str
+    course_code: str
+    section: Optional[str] = None
+    semester: Optional[int] = None
+
+class AttendanceMarkRequest(BaseModel):
+    subject_id: int
+    date: str # YYYY-MM-DD
+    hour: int
+    absentees: List[str] = Field(default_factory=list) # Roll numbers
+    section: str
+    semester: int

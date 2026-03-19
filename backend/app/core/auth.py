@@ -31,6 +31,8 @@ def get_password_hash(password):
     except Exception:
         return hashlib.sha256(password.encode()).hexdigest()
 
+import uuid
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
@@ -43,10 +45,32 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 def create_refresh_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=7) # Refresh token valid for 7 days
-    to_encode.update({"exp": expire})
+    jti = str(uuid.uuid4())
+    expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire, "jti": jti})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
+    return encoded_jwt, jti, expire
+
+async def save_refresh_token(db: AsyncSession, user_id: int, jti: str, expires_at: datetime):
+    new_token = models.RefreshToken(token_id=jti, user_id=user_id, expires_at=expires_at)
+    db.add(new_token)
+    await db.commit()
+
+async def revoke_refresh_token(db: AsyncSession, jti: str):
+    result = await db.execute(select(models.RefreshToken).filter(models.RefreshToken.token_id == jti))
+    token = result.scalars().first()
+    if token:
+        token.revoked_at = datetime.utcnow()
+        await db.commit()
+
+async def is_refresh_token_valid(db: AsyncSession, jti: str) -> bool:
+    result = await db.execute(
+        select(models.RefreshToken)
+        .filter(models.RefreshToken.token_id == jti)
+        .filter(models.RefreshToken.revoked_at == None)
+        .filter(models.RefreshToken.expires_at > datetime.utcnow())
+    )
+    return result.scalars().first() is not None
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select

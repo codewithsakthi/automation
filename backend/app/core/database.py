@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
+    # CORS_ORIGINS: comma-separated list of allowed frontend origins
+    # e.g. "http://localhost:5173,https://my-app.vercel.app"
+    CORS_ORIGINS: str = ""
+    SENTRY_DSN: Optional[str] = Field(default=None, env="SENTRY_DSN")
+    SENTRY_ENV: str = Field(default="production", env="SENTRY_ENV")
 
     model_config = SettingsConfigDict(
         env_file=".env",

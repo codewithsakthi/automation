@@ -43,11 +43,11 @@ const Login = () => {
     setLoading(true);
     setError('');
     try {
-      const tokenPayload = await api.post('/api/auth/login', new URLSearchParams({ username, password }), {
+      const tokenPayload = await api.post('auth/login', new URLSearchParams({ username, password }), {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
 
-      const userData = await api.get('/api/auth/me', {
+      const userData = await api.get('auth/me', {
         headers: { Authorization: `Bearer ${tokenPayload.access_token}` }
       });
       

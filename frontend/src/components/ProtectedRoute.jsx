@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
-const ProtectedRoute = ({ children, adminOnly = false }) => {
+const ProtectedRoute = ({ children, adminOnly = false, staffOnly = false }) => {
   const { user, token } = useAuthStore();
   const location = useLocation();
 
@@ -10,7 +10,13 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (adminOnly && user.role !== 'admin') {
+  const userRole = user?.role?.name || user?.role || 'student';
+
+  if (adminOnly && userRole !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (staffOnly && userRole !== 'staff') {
     return <Navigate to="/dashboard" replace />;
   }
 

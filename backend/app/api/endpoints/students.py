@@ -1,12 +1,13 @@
 from __future__ import annotations
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Path
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core import auth
 from ...core.database import get_db
 from ...models import base as models
 from ...schemas import base as schemas
+from ...core.limiter import limiter
 from ...services.student_service import StudentService
 
 # Common responses for students router
@@ -23,7 +24,9 @@ router = APIRouter(tags=["Students"], responses=STUDENT_RESPONSES)
     summary="Get Student Performance",
     description="Retrieve comprehensive academic performance record for a specific student including SGPA trends and subject-wise grades."
 )
+@limiter.limit("20/minute")
 async def get_student_performance(
+    request: Request,
     roll_no: str = Path(..., description="Student roll number"),
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
@@ -39,7 +42,9 @@ async def get_student_performance(
     summary="Get Student Analytics",
     description="Retrieve processed academic insights, percentile rankings, and skill domain mapping for a student."
 )
+@limiter.limit("20/minute")
 async def get_student_analytics(
+    request: Request,
     roll_no: str = Path(..., description="Student roll number"),
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
@@ -56,7 +61,9 @@ async def get_student_analytics(
     summary="Get Student Command Center",
     description="Retrieve a high-level executive dashboard for a student, including core metrics, risk indicators, and peer benchmarks."
 )
+@limiter.limit("20/minute")
 async def get_student_command_center(
+    request: Request,
     roll_no: str = Path(..., description="Student roll number"),
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)

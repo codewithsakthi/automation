@@ -11,6 +11,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .. import schemas
 
 
+AVG_MARKS_CASE = """
+CASE upper(coalesce({grade_col}, ''))
+    WHEN 'O' THEN 95
+    WHEN 'S' THEN 95
+    WHEN 'A+' THEN 85
+    WHEN 'A' THEN 75
+    WHEN 'B+' THEN 65
+    WHEN 'B' THEN 55
+    WHEN 'C' THEN 48
+    WHEN 'D' THEN 43
+    WHEN 'E' THEN 38
+    WHEN 'PASS' THEN 50
+    WHEN 'P' THEN 50
+    ELSE 0
+END
+"""
+
 GRADE_POINT_CASE = """
 CASE upper(coalesce({grade_col}, ''))
     WHEN 'O' THEN 10
@@ -34,8 +51,28 @@ LAB_PATTERNS = ["lab", "project", "practic", "workshop"]
 AUDIT_PATTERNS = ["audit", "value added", "mandatory", "non credit"]
 
 
-def _credits_values(curriculum_credits: dict[str, float]) -> str:
-    return ", ".join(f"('{code}', {credit})" for code, credit in curriculum_credits.items())
+def _credits_values(curriculum_credits: dict) -> str:
+    """Helper to format credits dictionary for SQL VALUES clause safely."""
+    vals = []
+    if not curriculum_credits:
+         return "('', 0)"
+    
+    for code, credit in curriculum_credits.items():
+        if isinstance(credit, dict):
+            # Try to find the first numeric value in the nested dictionary
+            found_val = 0
+            for v in credit.values():
+                if isinstance(v, (int, float)):
+                    found_val = v
+                    break
+            vals.append(f"('{code}', {found_val})")
+        else:
+            # Assume it's a numeric value
+            vals.append(f"('{code}', {credit if isinstance(credit, (int, float)) else 0})")
+    
+    if not vals:
+        return "('', 0)"
+    return ", ".join(vals)
 
 
 def _risk_level(score: float) -> str:
@@ -120,6 +157,8 @@ def _base_ctes(curriculum_credits: dict[str, float]) -> str:
         SELECT
             st.id AS student_id,
             st.roll_no,
+            st.reg_no,
+            st.section,
             st.name AS student_name,
             st.batch,
             st.current_semester,
@@ -127,6 +166,7 @@ def _base_ctes(curriculum_credits: dict[str, float]) -> str:
             sg.semester,
             sg.subject_code,
             COALESCE(sg.subject_title, sc.name, sg.subject_code) AS subject_name,
+            sg.grade,
             sc.skill_domain,
             COALESCE(sc.has_internal_component, TRUE) AS has_internal_component,
             COALESCE(sc.credit, 0) AS credit,
@@ -135,9 +175,17 @@ def _base_ctes(curriculum_credits: dict[str, float]) -> str:
                 WHEN COALESCE(sc.has_internal_component, TRUE) THEN COALESCE(sg.internal_marks, 0)
                 ELSE NULL
             END AS effective_internal_marks,
-            COALESCE(sg.marks, 0) AS total_marks,
-            sg.grade,
             {GRADE_POINT_CASE.format(grade_col='sg.grade')} AS grade_point,
+            COALESCE(
+                sg.marks, 
+                CASE 
+                    WHEN sg.grade IS NOT NULL AND upper(sg.grade) NOT IN ('U', 'FAIL', 'F', 'AB', 'W', 'I') 
+                    THEN {AVG_MARKS_CASE.format(grade_col='sg.grade')}
+                    ELSE NULL 
+                END,
+                sg.internal_marks,
+                0
+            ) AS total_marks,
             CASE WHEN upper(coalesce(sg.grade, '')) IN ('U', 'FAIL', 'F', 'AB', 'W', 'I') THEN 1 ELSE 0 END AS failed
         FROM semester_grades sg
         JOIN students st ON st.roll_no = sg.roll_no
@@ -146,10 +194,12 @@ def _base_ctes(curriculum_credits: dict[str, float]) -> str:
     attendance_rollup AS (
         SELECT
             st.id AS student_id,
+            ci.city,
             ROUND(COALESCE(100.0 * SUM(COALESCE(a.total_present, 0)) / NULLIF(SUM(COALESCE(a.total_hours, 0)), 0), 0)::numeric, 2) AS attendance_percentage
         FROM students st
+        LEFT JOIN contact_info ci ON ci.roll_no = st.roll_no
         LEFT JOIN attendance a ON a.student_id = st.id
-        GROUP BY st.id
+        GROUP BY st.id, ci.city
     ),
     semester_gpa AS (
         SELECT
@@ -165,8 +215,8 @@ def _base_ctes(curriculum_credits: dict[str, float]) -> str:
                     ELSE 0
                 END::numeric, 2
             ) AS sgpa,
-            ROUND(AVG(me.effective_internal_marks)::numeric, 2) AS internal_avg,
-            ROUND(AVG(me.total_marks)::numeric, 2) AS marks_avg
+            COALESCE(ROUND(AVG(me.effective_internal_marks)::numeric, 2), 0) AS internal_avg,
+            COALESCE(ROUND(AVG(me.total_marks)::numeric, 2), 0) AS marks_avg
         FROM marks_enriched me
         GROUP BY me.student_id, me.roll_no, me.student_name, me.batch, me.semester
     ),
@@ -181,9 +231,13 @@ def _base_ctes(curriculum_credits: dict[str, float]) -> str:
         SELECT DISTINCT ON (st.id)
             st.id AS student_id,
             st.roll_no,
+            st.reg_no,
+            st.section,
             st.name AS student_name,
             st.batch,
             st.current_semester,
+            st.email,
+            ar.city,
             COALESCE(ar.attendance_percentage, 0) AS attendance_percentage,
             COALESCE(v.sgpa, 0) AS cgpa_proxy,
             v.internal_avg AS internal_avg,
@@ -192,8 +246,10 @@ def _base_ctes(curriculum_credits: dict[str, float]) -> str:
             COALESCE((
                 SELECT COUNT(*) FROM marks_enriched m2
                 WHERE m2.student_id = st.id AND m2.failed = 1
-            ), 0) AS active_arrears
+            ), 0) AS active_arrears,
+            u.is_initial_password
         FROM students st
+        JOIN users u ON u.id = st.id
         LEFT JOIN attendance_rollup ar ON ar.student_id = st.id
         LEFT JOIN velocity v ON v.student_id = st.id AND v.semester = st.current_semester
         ORDER BY st.id, st.current_semester DESC
@@ -384,6 +440,7 @@ async def get_student_360(
         student_profile AS (
             SELECT
                 rs.roll_no,
+                rs.reg_no,
                 rs.student_name,
                 rs.batch,
                 rs.current_semester,
@@ -392,7 +449,7 @@ async def get_student_360(
                 rs.gpa_velocity,
                 rs.active_arrears,
                 ROUND(COALESCE((
-                    SELECT corr(ss.attendance_pct, ss.internal_avg)
+                    SELECT corr(ss.attendance_pct::float, ss.internal_avg::float)
                     FROM student_series ss
                 ), 0)::numeric, 2) AS attendance_marks_correlation,
                 rs.risk_score
@@ -527,8 +584,10 @@ async def get_student_360(
 
     return schemas.Student360Profile(
         roll_no=profile["roll_no"],
+        reg_no=profile.get("reg_no"),
         student_name=profile["student_name"],
         batch=profile["batch"],
+        section=profile.get("section"),
         current_semester=profile["current_semester"],
         overall_gpa=overall_gpa,
         attendance_percentage=attendance_percentage,
@@ -585,7 +644,7 @@ async def get_subject_bottlenecks(
                 )::numeric, 2) AS historical_five_year_average,
                 COUNT(*) OVER () AS total_count
             FROM marks_enriched me
-            WHERE ({_cast_text_param('subject_code')} IS NULL OR lower(me.subject_code) = lower({_cast_text_param('subject_code')}))
+            WHERE ({_cast_text_param('subject_code_val')} IS NULL OR lower(me.subject_code) = lower({_cast_text_param('subject_code_val')}))
             GROUP BY me.subject_code, me.subject_name, me.semester
         )
         SELECT
@@ -605,7 +664,7 @@ async def get_subject_bottlenecks(
         OFFSET :offset LIMIT :limit
         """
     )
-    rows = (await db.execute(query, {"subject_code": subject_code, "limit": limit, "offset": offset})).mappings().all()
+    rows = (await db.execute(query, {"subject_code_val": subject_code, "limit": limit, "offset": offset})).mappings().all()
     total = int(rows[0]["total_count"]) if rows else 0
     return schemas.SubjectBottleneckResponse(
         items=[schemas.SubjectBottleneckItem(**{k: v for k, v in dict(row).items() if k != "total_count"}) for row in rows],
@@ -767,20 +826,22 @@ async def _get_admin_directory_rollup(db: AsyncSession, curriculum_credits: dict
         + """
         SELECT
             sc.roll_no,
-            NULL::text AS reg_no,
+            sc.reg_no,
             sc.student_name AS name,
-            NULL::text AS city,
-            NULL::text AS email,
+            sc.city,
+            sc.email,
             NULL::text AS phone_primary,
             sc.batch,
+            sc.section,
             sc.current_semester,
             0 AS marks_count,
             0 AS attendance_count,
             sc.attendance_percentage,
-            sc.cgpa_proxy AS average_grade_points,
-            sc.internal_avg AS average_internal_percentage,
+            COALESCE(sc.cgpa_proxy, 0) AS average_grade_points,
+            COALESCE(sc.internal_avg, 0) AS average_internal_percentage,
             sc.active_arrears AS backlogs,
-            RANK() OVER (ORDER BY sc.cgpa_proxy DESC, sc.attendance_percentage DESC) AS rank
+            sc.is_initial_password,
+            RANK() OVER (ORDER BY COALESCE(sc.cgpa_proxy, 0) DESC, COALESCE(sc.attendance_percentage, 0) DESC) AS rank
         FROM student_current sc
         ORDER BY rank, sc.roll_no
         """
@@ -797,7 +858,8 @@ async def _get_batch_health(db: AsyncSession, curriculum_credits: dict[str, floa
             COALESCE(batch, 'Unknown') AS batch,
             ROUND(AVG(cgpa_proxy)::numeric, 2) AS avg_gpa,
             ROUND(AVG(attendance_percentage)::numeric, 2) AS avg_attendance,
-            SUM(CASE WHEN active_arrears > 0 THEN 1 ELSE 0 END) AS backlog_students
+            SUM(CASE WHEN active_arrears > 0 THEN 1 ELSE 0 END) AS backlog_students,
+            COUNT(*) AS total_students
         FROM student_current
         GROUP BY COALESCE(batch, 'Unknown')
         ORDER BY avg_gpa DESC, avg_attendance DESC
@@ -809,7 +871,7 @@ async def _get_batch_health(db: AsyncSession, curriculum_credits: dict[str, floa
             "average_gpa": float(row["avg_gpa"] or 0),
             "average_attendance": float(row["avg_attendance"] or 0),
             "at_risk_count": int(row["backlog_students"] or 0),
-            "total_students": 100 # Placeholder for total students
+            "total_students": int(row["total_students"] or 0)
         }
         for row in (await db.execute(query)).mappings().all()
     ]
@@ -862,7 +924,7 @@ async def _get_risk_summary(db: AsyncSession, curriculum_credits: dict[str, floa
 
 
 async def _get_placement_summary(db: AsyncSession, curriculum_credits: dict[str, float]) -> schemas.AdminPlacementSummary:
-    coding_filter = " OR ".join([f"lower(me.subject_name) LIKE '%{pattern}%'" for pattern in CODING_PATTERNS])
+    coding_patterns = "|".join(CODING_PATTERNS)
     query = text(
         _base_ctes(curriculum_credits)
         + f"""
@@ -870,7 +932,7 @@ async def _get_placement_summary(db: AsyncSession, curriculum_credits: dict[str,
         coding_scores AS (
             SELECT
                 me.student_id,
-                ROUND(AVG(CASE WHEN {coding_filter} THEN COALESCE(me.total_marks, me.internal_marks) ELSE NULL END)::numeric, 2) AS coding_subject_score
+                ROUND(AVG(CASE WHEN me.subject_name ~* :coding_patterns THEN COALESCE(me.total_marks, me.internal_marks) ELSE NULL END)::numeric, 2) AS coding_subject_score
             FROM marks_enriched me
             GROUP BY me.student_id
         )
@@ -883,7 +945,7 @@ async def _get_placement_summary(db: AsyncSession, curriculum_credits: dict[str,
         LEFT JOIN coding_scores cs ON cs.student_id = sc.student_id
         """
     )
-    row = (await db.execute(query)).mappings().one()
+    row = (await db.execute(query, {"coding_patterns": coding_patterns})).mappings().one()
     return schemas.AdminPlacementSummary(
         ready_count=int(row["ready_count"] or 0),
         almost_ready_count=int(row["almost_ready_count"] or 0),
@@ -979,13 +1041,13 @@ async def get_command_center(
     for subject in bottlenecks.items[:2]:
         alerts.append(f"{subject.subject_code} is trending {abs(subject.drift_from_history)} marks below its five-year baseline.")
 
-    top_performers = sorted(directory, key=lambda item: (item.average_grade_points, item.attendance_percentage), reverse=True)[:8]
-    attendance_defaulters = sorted(directory, key=lambda item: item.attendance_percentage)[:8]
-    internal_defaulters = sorted(directory, key=lambda item: item.average_internal_percentage)[:8]
-    backlog_clusters = sorted([item for item in directory if item.backlogs > 0], key=lambda item: (-item.backlogs, item.average_grade_points))[:8]
+    top_performers = sorted(directory, key=lambda item: ((item.average_grade_points or 0), (item.attendance_percentage or 0)), reverse=True)[:8]
+    attendance_defaulters = sorted(directory, key=lambda item: (item.attendance_percentage or 0))[:8]
+    internal_defaulters = sorted(directory, key=lambda item: (item.average_internal_percentage or 0))[:8]
+    backlog_clusters = sorted([item for item in directory if (item.backlogs or 0) > 0], key=lambda item: (-(item.backlogs or 0), (item.average_grade_points or 0)))[:8]
     opportunity_students = sorted(
-        [item for item in directory if item.attendance_percentage >= 85 and item.average_grade_points < 7],
-        key=lambda item: (item.average_grade_points, -item.attendance_percentage),
+        [item for item in directory if (item.attendance_percentage or 0) >= 85 and (item.average_grade_points or 0) < 7],
+        key=lambda item: ((item.average_grade_points or 0), -(item.attendance_percentage or 0)),
     )[:8]
     quick_actions = [
         "Open Student 360 for every red-zone student before counselor review.",
@@ -1074,11 +1136,11 @@ async def get_risk_registry(
             gpa_velocity,
             COUNT(*) OVER () AS total_count
         FROM risk_scores
-        WHERE ({_cast_text_param('risk_level')} IS NULL)
-           OR ({_cast_text_param('risk_level')} = 'Critical' AND risk_score >= 70)
-           OR ({_cast_text_param('risk_level')} = 'High' AND risk_score >= 55 AND risk_score < 70)
-           OR ({_cast_text_param('risk_level')} = 'Moderate' AND risk_score >= 35 AND risk_score < 55)
-           OR ({_cast_text_param('risk_level')} = 'Low' AND risk_score < 35)
+        WHERE (CAST(:risk_level AS TEXT) IS NULL)
+           OR (CAST(:risk_level AS TEXT) = 'Critical' AND risk_score >= 70)
+           OR (CAST(:risk_level AS TEXT) = 'High' AND risk_score >= 55 AND risk_score < 70)
+           OR (CAST(:risk_level AS TEXT) = 'Moderate' AND risk_score >= 35 AND risk_score < 55)
+           OR (CAST(:risk_level AS TEXT) = 'Low' AND risk_score < 35)
         ORDER BY {order_sql}
         OFFSET :offset LIMIT :limit
         """

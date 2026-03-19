@@ -63,7 +63,10 @@ class AdminService:
                    coalesce(ci.email, s.email) as email,
                    ci.phone_primary,
                    s.batch,
+                   s.section,
                    s.current_semester,
+                   s.current_semester,
+                   s.section,
                    coalesce(ga.marks_count, 0) as marks_count,
                    coalesce(aa.attendance_count, 0) as attendance_count,
                    coalesce(aa.attendance_percentage, 0) as attendance_percentage,
@@ -71,7 +74,7 @@ class AdminService:
                    coalesce(ga.average_internal_percentage, 0) as average_internal_percentage,
                    coalesce(ga.backlogs, 0) as backlogs,
                    s.reg_no,
-                   rank() over (order by coalesce(ga.average_grade_points, 0) desc) as rank
+                   rank() over (order by coalesce(ga.average_grade_points, 0) desc, coalesce(aa.attendance_percentage, 0) desc) as rank
             from rollups r
             left join students s on s.roll_no = r.roll_no
             left join contact_info ci on ci.roll_no = r.roll_no
@@ -94,6 +97,7 @@ class AdminService:
         city: str = '',
         batch: str = '',
         semester: Optional[int] = None,
+        section: str = '',
         risk_only: bool = False,
         sort_by: str = 'roll_no',
         sort_dir: str = 'desc',
@@ -117,6 +121,8 @@ class AdminService:
             results = [item for item in results if (item.batch or '').lower() == batch.strip().lower()]
         if semester is not None:
             results = [item for item in results if item.current_semester == semester]
+        if section:
+            results = [item for item in results if (item.section or '').lower() == section.strip().lower()]
         if risk_only:
             results = [
                 item for item in results
@@ -199,3 +205,31 @@ class AdminService:
             attendance_bands=[schemas.AdminDirectoryInsightItem(label=label, count=count) for label, count in attendance_bands.items()],
             gpa_bands=[schemas.AdminDirectoryInsightItem(label=label, count=count) for label, count in gpa_bands.items()],
         )
+    @classmethod
+    async def assign_sections(cls, db: AsyncSession, batch: str):
+        """
+        Orders students by RegNo and divides them into section A (first half) and B (second half).
+        """
+        # Sanitize batch by removing spaces
+        clean_batch = str(batch).replace(" ", "")
+        
+        # Fetch all students in the given batch (comparing without spaces), ordered by reg_no
+        stmt = select(models.Student).where(func.replace(models.Student.batch, ' ', '') == clean_batch).order_by(models.Student.reg_no)
+        result = await db.execute(stmt)
+        students = result.scalars().all()
+        
+        if not students:
+            return 0
+            
+        n = len(students)
+        mid = n // 2
+        
+        # Update first half to Section A
+        for i, s in enumerate(students):
+            if i < mid:
+                s.section = 'A'
+            else:
+                s.section = 'B'
+        
+        await db.commit()
+        return n

@@ -111,6 +111,7 @@ export interface AdminDirectoryStudent {
   phone_primary?: string | null;
   batch?: string | null;
   current_semester?: number | null;
+  section?: string | null;
   marks_count: number;
   attendance_count: number;
   attendance_percentage: number;
@@ -118,6 +119,7 @@ export interface AdminDirectoryStudent {
   average_internal_percentage: number;
   backlogs: number;
   rank?: number | null;
+  is_initial_password: boolean;
 }
 
 export interface AdminDirectoryPage {
@@ -312,8 +314,10 @@ export interface StudentSemesterVelocity {
 
 export interface Student360Profile {
   roll_no: string;
+  reg_no?: string | null;
   student_name: string;
   batch?: string | null;
+  section?: string | null;
   current_semester?: number | null;
   overall_gpa: number;
   attendance_percentage: number;

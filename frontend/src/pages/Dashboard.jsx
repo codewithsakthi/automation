@@ -55,7 +55,7 @@ const Dashboard = () => {
   // Data Fetching
   const { data: profile } = useQuery({
     queryKey: ['me'],
-    queryFn: () => api.get('/api/auth/me'),
+    queryFn: () => api.get('auth/me'),
     staleTime: 600000,
   });
 
@@ -68,19 +68,19 @@ const Dashboard = () => {
 
   const { data: performance, isLoading: loadingPerf } = useQuery({
     queryKey: ['performance', rollNo],
-    queryFn: () => api.get(`/api/students/performance/${rollNo}`),
+    queryFn: () => api.get(`students/performance/${rollNo}`),
     enabled: !!rollNo,
   });
 
   const { data: commandCenter, isLoading: loadingCommandCenter } = useQuery({
     queryKey: ['student-command-center', rollNo],
-    queryFn: () => api.get(`/api/students/command-center/${rollNo}`),
+    queryFn: () => api.get(`students/command-center/${rollNo}`),
     enabled: !!rollNo,
   });
 
   const { data: attendanceData, isLoading: loadingAttendance } = useQuery({
     queryKey: ['attendance', rollNo, attSem, attPage],
-    queryFn: () => api.get(`/api/students/attendance/${rollNo}`, {
+    queryFn: () => api.get(`students/attendance/${rollNo}`, {
       params: {
         semester: attSem === 'ALL' ? undefined : attSem,
         page: attPage,
@@ -97,7 +97,7 @@ const Dashboard = () => {
 
   // Mutations
   const syncMutation = useMutation({
-    mutationFn: (dob) => api.post(`/api/students/scrape/${rollNo}?dob=${dob}`),
+    mutationFn: (dob) => api.post(`students/scrape/${rollNo}?dob=${dob}`),
     onSuccess: (data) => {
       localStorage.setItem('syncDob', syncDob);
       queryClient.invalidateQueries(['performance', rollNo]);
@@ -107,7 +107,7 @@ const Dashboard = () => {
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: (data) => api.patch('/api/auth/me', data),
+    mutationFn: (data) => api.patch('auth/me', data),
     onSuccess: (data) => {
       updateUser(data);
       queryClient.invalidateQueries(['me']);
@@ -115,7 +115,7 @@ const Dashboard = () => {
   });
 
   const changePasswordMutation = useMutation({
-    mutationFn: (data) => api.post('/api/auth/me/password', data),
+    mutationFn: (data) => api.post('auth/me/password', data),
   });
 
   // Derived Data

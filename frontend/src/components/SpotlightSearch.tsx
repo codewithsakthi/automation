@@ -36,7 +36,7 @@ export default function SpotlightSearch({ onSelect }: SpotlightSearchProps) {
 
   const { data, isFetching } = useQuery<{ results: SpotlightResult[] }>({
     queryKey: ['spotlight-search', query],
-    queryFn: () => api.get(`/api/admin/spotlight-search?q=${encodeURIComponent(query)}`),
+    queryFn: () => api.get(`admin/spotlight-search?q=${encodeURIComponent(query)}`),
     enabled: open && query.trim().length > 1,
     staleTime: 15_000,
   });

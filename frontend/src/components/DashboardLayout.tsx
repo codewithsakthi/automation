@@ -26,7 +26,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'Overview';
-  const role = (user as any)?.role === 'admin' || (user as any)?.role?.name === 'admin' ? 'admin' : 'student';
+  const role = (user as any)?.role === 'admin' || (user as any)?.role?.name === 'admin' 
+    ? 'admin' 
+    : (user as any)?.role === 'staff' || (user as any)?.role?.name === 'staff'
+      ? 'staff'
+      : 'student';
 
   const handleLogout = () => {
     logout();
@@ -87,6 +91,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Sidebar for Desktop */}
       <div className="hidden lg:block flex-shrink-0" style={{ width }}>
         <Sidebar 
+          role={role}
           width={width} 
           onResizeStart={startResizing} 
           isResizing={isResizing} 

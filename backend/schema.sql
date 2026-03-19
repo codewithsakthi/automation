@@ -104,10 +104,26 @@ $$ language 'plpgsql';
 
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 
--- Indexing for performance
+-- =============================================================
+-- Indexing Strategy
+-- =============================================================
+
+-- student_marks: single-column (legacy, kept for backward compat)
 CREATE INDEX idx_student_marks_student_id ON student_marks(student_id);
-CREATE INDEX idx_attendance_student_id ON attendance(student_id);
+
+-- student_marks: composite — primary query pattern is "all marks for a
+-- student in a given semester". Covers ORDER BY semester efficiently.
+CREATE INDEX idx_student_marks_student_semester ON student_marks(student_id, semester);
+
+-- attendance: separate date index (for date-range queries on full table)
 CREATE INDEX idx_attendance_date ON attendance(date);
+
+-- attendance: composite — the hottest query is "all attendance for student
+-- filtered by date range". Replaces hitting both single-column indexes.
+CREATE INDEX idx_attendance_student_date ON attendance(student_id, date);
+
+-- users: role_id lookup — used on every authenticated request to check RBAC
+CREATE INDEX idx_users_role_id ON users(role_id);
 
 -- Comment on Normalization:
 -- 1NF: All attributes are atomic (status_array handles multiple hours but as a single type/array).

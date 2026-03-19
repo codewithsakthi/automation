@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, Path, HTTPException, Response
+from fastapi import APIRouter, Depends, Query, Path, HTTPException, Response, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +10,7 @@ from ...core.constants import CURRICULUM_CREDITS
 from ...models import base as models
 from ...schemas import base as schemas
 from ...services.admin_service import AdminService
+from ...core.limiter import limiter
 from ...services import enterprise_analytics
 
 # Enum Definitions for API Constraints
@@ -192,7 +193,7 @@ async def get_placement_readiness(
     return await enterprise_analytics.get_placement_readiness(db, CURRICULUM_CREDITS, cgpa_threshold=cgpa_threshold, limit=limit, offset=offset, sort_by=sort_by.value)
 
 @router.get(
-    "/risk-registry", 
+    "/risk/registry", 
     response_model=schemas.RiskRegistryResponse,
     summary="Get Batch Risk Registry",
     description="Identify and rank students at high academic risk across the entire institution for proactive intervention."
@@ -223,7 +224,9 @@ async def get_risk_registry(
         }
     }
 )
+@limiter.limit("5/minute")
 async def export_batch_summary(
+    request: Request,
     cgpa_threshold: float = Query(default=6.5, description="CGPA threshold for placement readiness"),
     current_user: models.User = Depends(auth.get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -248,7 +251,9 @@ async def export_batch_summary(
         }
     }
 )
+@limiter.limit("10/minute")
 async def export_grade_sheet(
+    request: Request,
     roll_no: str = Path(..., description="Student roll number"),
     current_user: models.User = Depends(auth.get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -269,6 +274,7 @@ async def get_admin_students(
     city: str = '',
     batch: str = '',
     semester: Optional[int] = Query(default=None, description="Filter by semester"),
+    section: str = '',
     risk_only: bool = Query(default=False, description="Show only at-risk students"),
     sort_by: StudentSortBy = Query(default=StudentSortBy.ROLL_NO, description="Field to sort by"),
     sort_dir: SortDir = Query(default=SortDir.DESC, description="Sort direction (asc/desc)"),
@@ -281,7 +287,7 @@ async def get_admin_students(
     require_admin(current_user)
     credits_values = ", ".join(f"('{code}', {credit})" for code, credit in CURRICULUM_CREDITS.items())
     directory = await AdminService.build_admin_directory(db, credits_values)
-    return AdminService.filter_admin_directory(directory, search, city, batch, semester, risk_only, sort_by.value, sort_dir, limit)
+    return AdminService.filter_admin_directory(directory, search, city, batch, semester, section, risk_only, sort_by.value, sort_dir, limit)
 
 @router.get("/students/paginated", response_model=schemas.AdminDirectoryPage)
 async def get_admin_students_paginated(
@@ -291,6 +297,7 @@ async def get_admin_students_paginated(
     city: str = '',
     batch: str = '',
     semester: Optional[int] = Query(default=None, description="Filter by semester"),
+    section: str = '',
     risk_only: bool = Query(default=False, description="Show only at-risk students"),
     sort_by: StudentSortBy = Query(default=StudentSortBy.ROLL_NO, description="Field to sort by"),
     sort_dir: SortDir = Query(default=SortDir.DESC, description="Sort direction (asc/desc)"),
@@ -303,7 +310,7 @@ async def get_admin_students_paginated(
     require_admin(current_user)
     credits_values = ", ".join(f"('{code}', {credit})" for code, credit in CURRICULUM_CREDITS.items())
     directory = await AdminService.build_admin_directory(db, credits_values)
-    filtered = AdminService.filter_admin_directory(directory, search, city, batch, semester, risk_only, sort_by.value, sort_dir, 1000)
+    filtered = AdminService.filter_admin_directory(directory, search, city, batch, semester, section, risk_only, sort_by.value, sort_dir, 1000)
     items = filtered[offset : offset + limit]
     return schemas.AdminDirectoryPage(
         items=items,
@@ -349,3 +356,12 @@ async def get_student_record(
 ):
     require_admin(current_user)
     return schemas.FullStudentRecord(roll_no=roll_no)
+@router.post("/assign-sections", response_model=schemas.MessageResponse)
+async def assign_student_sections(
+    batch: str = Query(..., description="Batch to process"),
+    current_user: models.User = Depends(auth.get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    require_admin(current_user)
+    count = await AdminService.assign_sections(db, batch)
+    return schemas.MessageResponse(message=f"Successfully assigned sections for {count} students in batch {batch}")

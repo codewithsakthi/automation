@@ -49,12 +49,12 @@ export default function StudentProfile360({ rollNo, onClose }: StudentProfile360
   const drawerRef = React.useRef<HTMLElement | null>(null);
   const { data, isLoading } = useQuery<Student360Profile>({
     queryKey: ['student-360', rollNo],
-    queryFn: () => api.get(`/api/admin/student-360/${rollNo}`),
+    queryFn: () => api.get(`admin/student-360/${rollNo}`),
     enabled: Boolean(rollNo),
   });
   const { data: record, isLoading: isRecordLoading } = useQuery<FullStudentRecord>({
     queryKey: ['student-record', rollNo],
-    queryFn: () => api.get(`/api/admin/student-record/${rollNo}`),
+    queryFn: () => api.get(`admin/student-record/${rollNo}`),
     enabled: Boolean(rollNo),
     staleTime: 60_000,
   });
@@ -85,7 +85,7 @@ export default function StudentProfile360({ rollNo, onClose }: StudentProfile360
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.22em] text-primary">Student 360</p>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">{data?.student_name || rollNo}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{data?.batch || 'Batch pending'} | Sem {data?.current_semester || '-'} | {rollNo}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{data?.batch || 'Batch pending'} | Sem {data?.current_semester || '-'} | Sec {data?.section || '-'} | Roll: {rollNo} | {data?.reg_no ? `Reg: ${data.reg_no}` : 'No Reg No'}</p>
         </div>
         <button type="button" onClick={onClose} className="tab-chip">Close</button>
       </div>
@@ -325,7 +325,7 @@ export default function StudentProfile360({ rollNo, onClose }: StudentProfile360
                 <p className="text-lg font-semibold text-foreground">Skill Domain Radar</p>
                 <p className="text-sm text-muted-foreground">Theory, programming, lab, and attendance mapped into one profile.</p>
               </div>
-              <button type="button" className="hero-button !text-foreground !border-border !bg-card" onClick={() => downloadWithToken(`/api/admin/exports/grade-sheet/${data.roll_no}.pdf`, `${data.roll_no}-grade-sheet.pdf`)}>
+              <button type="button" className="hero-button !text-foreground !border-border !bg-card" onClick={() => downloadWithToken(`admin/exports/grade-sheet/${data.roll_no}.pdf`, `${data.roll_no}-grade-sheet.pdf`)}>
                 <Download size={16} />
                 PDF Grade Sheet
               </button>

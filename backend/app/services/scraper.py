@@ -13,8 +13,8 @@ from sqlalchemy.orm import joinedload
 from ..core import auth
 from .. import models
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT_PATH = PROJECT_ROOT / 'script.py'
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+SCRIPT_PATH = PROJECT_ROOT / 'script.py' 
 DATA_DIR = PROJECT_ROOT / 'data'
 
 
@@ -281,7 +281,7 @@ class PortalScraper:
             if not entry:
                 entry = models.StudentMark(student_id=student.id, subject_id=subject.id, semester=semester)
                 db.add(entry)
-            entry.grade = grade
+            # entry.grade = grade  # Skip setting computed column
             await db.flush()
 
         # 2. Process University Marks (overwrite/refine grades)
@@ -327,8 +327,8 @@ class PortalScraper:
             if not entry:
                 entry = models.StudentMark(student_id=student.id, subject_id=subject.id, semester=semester)
                 db.add(entry)
-            if grade:
-                entry.grade = grade
+            # if grade:
+            #     entry.grade = grade # Skip setting computed column
             await db.flush()
 
         # 3. Process CIT Marks (Internal Percentage)
@@ -401,13 +401,17 @@ class PortalScraper:
                         setattr(entry, field_name, mark_val)
                         await db.flush()
                         
-                        # Recalculate internal average (ignore -1/Absent for math average, but keep for record)
+                        # Recalculate internal average for the local merge dict only
                         vals = [entry.cit1_marks, entry.cit2_marks, entry.cit3_marks]
                         nums = [float(v) for v in vals if v is not None and float(v) >= 0]
+                        calc_internal = None
                         if nums:
-                            entry.internal_marks = round(sum(nums) / len(nums), 2)
+                            calc_internal = round(sum(nums) / len(nums), 2)
+                        
+                        # Do NOT set entry.internal_marks here as it's a computed column in StudentMark
+                        
                         if code in merged_grades:
-                            merged_grades[code]['internal_marks'] = entry.internal_marks
+                            merged_grades[code]['internal_marks'] = calc_internal
                         elif any(v is not None and float(v) == -1 for v in vals):
                             # If all are absent or mix of absent and none, we can leave internal_marks as None or explicitly 0?
                             # Standard practice usually treats absent as 0 in final calc, but let's keep internal_marks as None 

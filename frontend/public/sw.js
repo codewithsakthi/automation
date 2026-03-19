@@ -20,10 +20,13 @@ const PRECACHE_ASSETS = [
 
 // API paths that should NEVER be cached (auth-sensitive)
 const NEVER_CACHE_PATTERNS = [
+  '/api/v1/auth/login',
+  '/api/v1/auth/logout',
+  '/api/v1/auth/refresh',
+  '/api/v1/auth/token',
   '/api/auth/login',
   '/api/auth/logout',
   '/api/auth/refresh',
-  '/api/auth/token',
 ];
 
 function broadcastMessage(message) {

@@ -66,12 +66,13 @@ const NavGroup = ({ title, children }: { title: string; children: React.ReactNod
 );
 
 interface SidebarProps {
+  role?: 'admin' | 'staff' | 'student';
   width: number;
   onResizeStart: (e: React.MouseEvent) => void;
   isResizing: boolean;
 }
 
-export default function Sidebar({ width, onResizeStart, isResizing }: SidebarProps) {
+export default function Sidebar({ role = 'student', width, onResizeStart, isResizing }: SidebarProps) {
   const { logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const [searchParams] = useSearchParams();
@@ -90,68 +91,67 @@ export default function Sidebar({ width, onResizeStart, isResizing }: SidebarPro
           </div>
           <div className="overflow-hidden">
             <h1 className="text-lg font-bold tracking-tight text-foreground whitespace-nowrap">SPARK</h1>
-            <p className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">ADMIN CONSOLE</p>
+            <p className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">
+              {role === 'admin' ? 'ADMIN CONSOLE' : role === 'staff' ? 'FACULTY PORTAL' : 'STUDENT HUB'}
+            </p>
           </div>
         </div>
 
         {/* Navigation Groups */}
         <nav className="flex-1 overflow-y-auto pr-2 hide-scrollbar">
-          <NavGroup title="Overview">
-            <NavItem 
-              icon={LayoutDashboard} 
-              label="Command Center" 
-              href="?tab=Overview" 
-              isActive={activeTab === 'Overview'} 
-            />
-            <NavItem icon={ShieldAlert} label="Risk Radar" href="#risk-radar" />
-            <NavItem icon={Target} label="Placement Pipeline" href="#placement-pipeline" />
-          </NavGroup>
+          {role === 'admin' ? (
+            <>
+              <NavGroup title="Overview">
+                <NavItem icon={LayoutDashboard} label="Command Center" href="?tab=Overview" isActive={activeTab === 'Overview'} />
+                <NavItem icon={ShieldAlert} label="Risk Radar" href="#risk-radar" />
+                <NavItem icon={Target} label="Placement Pipeline" href="#placement-pipeline" />
+              </NavGroup>
 
-          <NavGroup title="Analytics">
-            <NavItem 
-              icon={Zap} 
-              label="Subject Analytics" 
-              href="?tab=Performance" 
-              isActive={activeTab === 'Performance'} 
-            />
-            <NavItem 
-              icon={CalendarCheck} 
-              label="Attendance Insight" 
-              href="?tab=Attendance" 
-              isActive={activeTab === 'Attendance'} 
-            />
-            <NavItem icon={Trophy} label="Leaderboard" href="#leaderboard" />
-            <NavItem icon={Layers} label="Faculty Impact" href="#faculty-impact" />
-          </NavGroup>
+              <NavGroup title="Analytics">
+                <NavItem icon={Zap} label="Subject Analytics" href="?tab=Performance" isActive={activeTab === 'Performance'} />
+                <NavItem icon={CalendarCheck} label="Attendance Insight" href="?tab=Attendance" isActive={activeTab === 'Attendance'} />
+                <NavItem icon={Trophy} label="Leaderboard" href="#leaderboard" />
+                <NavItem icon={Layers} label="Faculty Impact" href="#faculty-impact" />
+              </NavGroup>
 
-          <NavGroup title="Management">
-            <NavItem 
-              icon={User} 
-              label="Profile Settings" 
-              href="?tab=Profile" 
-              isActive={activeTab === 'Profile'} 
-            />
-            <NavItem 
-              icon={Lock} 
-              label="Security Access" 
-              href="?tab=Security" 
-              isActive={activeTab === 'Security'} 
-            />
-            <NavItem 
-              icon={Users} 
-              label="Student Directory" 
-              href="?tab=Students" 
-              isActive={activeTab === 'Students'} 
-            />
-            <NavItem icon={ShieldAlert} label="Watchlist" href="#watchlist" />
-            <NavItem icon={Trophy} label="Top Performers" href="#top-performers" />
-          </NavGroup>
+              <NavGroup title="Management">
+                <NavItem icon={User} label="Profile Settings" href="?tab=Profile" isActive={activeTab === 'Profile'} />
+                <NavItem icon={Lock} label="Security Access" href="?tab=Security" isActive={activeTab === 'Security'} />
+                <NavItem icon={Users} label="Student Directory" href="?tab=Students" isActive={activeTab === 'Students'} />
+              </NavGroup>
+            </>
+          ) : role === 'staff' ? (
+            <>
+              <NavGroup title="Portal">
+                <NavItem icon={LayoutDashboard} label="Faculty Hub" href="/staff?tab=Overview" isActive={activeTab === 'Overview'} />
+                <NavItem icon={CalendarCheck} label="Mark Attendance" href="/staff?tab=Attendance" isActive={activeTab === 'Attendance'} />
+                <NavItem icon={Activity} label="Weekly Schedule" href="/staff?tab=Schedule" isActive={activeTab === 'Schedule'} />
+              </NavGroup>
+              <NavGroup title="Analytics">
+                <NavItem icon={BarChart2} label="Subject Performance" href="/staff?tab=Overview" />
+                <NavItem icon={Users} label="Student Insights" href="/staff?tab=Overview" />
+              </NavGroup>
+            </>
+          ) : (
+            <>
+              <NavGroup title="Academic">
+                <NavItem icon={LayoutDashboard} label="Overview" href="/dashboard?tab=Overview" isActive={activeTab === 'Overview'} />
+                <NavItem icon={Zap} label="Performance" href="/dashboard?tab=Performance" isActive={activeTab === 'Performance'} />
+                <NavItem icon={CalendarCheck} label="Attendance" href="/dashboard?tab=Attendance" isActive={activeTab === 'Attendance'} />
+              </NavGroup>
+              <NavGroup title="Personal">
+                <NavItem icon={User} label="My Profile" href="/dashboard?tab=Profile" isActive={activeTab === 'Profile'} />
+                <NavItem icon={Lock} label="Security" href="/dashboard?tab=Security" isActive={activeTab === 'Security'} />
+              </NavGroup>
+            </>
+          )}
         </nav>
 
         {/* Footer Actions */}
         <div className="mt-auto border-t border-border/50 pt-4 space-y-2 flex-shrink-0">
           <button
             onClick={toggleTheme}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
@@ -160,6 +160,7 @@ export default function Sidebar({ width, onResizeStart, isResizing }: SidebarPro
           
           <button
             onClick={logout}
+            aria-label="Sign out of your account"
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-500/10 transition-all"
           >
             <LogOut size={18} />

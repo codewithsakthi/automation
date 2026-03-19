@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   flexRender,
   getCoreRowModel,
@@ -112,15 +112,48 @@ export default function AdminDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'Overview';
   const urlRollNo = searchParams.get('rollNo');
+  const queryClient = useQueryClient();
+
+  const assignSectionsMutation = useMutation({
+    mutationFn: async (batch: string) => {
+      const response = await api.post(`admin/assign-sections?batch=${encodeURIComponent(batch)}`);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      console.log('Sections assigned:', data.message);
+      queryClient.invalidateQueries({ queryKey: ['admin-students-paginated'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-students'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-command-center'] });
+    },
+  });
 
   const [selectedSubjectCode, setSelectedSubjectCode] = useState('');
   const [selectedSemester, setSelectedSemester] = useState<string>('ALL');
   const [selectedRollNo, setSelectedRollNo] = useState<string | null>(null);
+
+  // Scroll to anchor on activeTab changes or direct link clicks
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && activeTab === 'Overview') {
+      const element = document.getElementById(hash.substring(1));
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, [activeTab]);
+
+  const scrollToAnchor = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
   const [placementSearch, setPlacementSearch] = useState('');
   const [studentSearch, setStudentSearch] = useState('');
   const [studentOffset, setStudentOffset] = useState(0);
   const [studentSemesterFilter, setStudentSemesterFilter] = useState<string>('ALL');
   const [studentBatchFilter, setStudentBatchFilter] = useState<string>('ALL');
+  const [studentSectionFilter, setStudentSectionFilter] = useState<string>('ALL');
   const [studentRiskOnly, setStudentRiskOnly] = useState(false);
   const [studentSortBy, setStudentSortBy] = useState<'rank' | 'name' | 'roll_no'>('rank');
   const [studentSortDir, setStudentSortDir] = useState<'asc' | 'desc'>('asc');
@@ -145,7 +178,7 @@ export default function AdminDashboard() {
 
   const { data, isLoading, refetch, isFetching } = useQuery<AdminCommandCenterResponse>({
     queryKey: ['admin-command-center'],
-    queryFn: () => api.get('/api/admin/command-center'),
+    queryFn: () => api.get('admin/command-center'),
     staleTime: 60_000,
   });
 
@@ -153,22 +186,22 @@ export default function AdminDashboard() {
 
   const { data: riskRegistry } = useQuery<RiskRegistryResponse>({
     queryKey: ['admin-risk-registry', riskLevel],
-    queryFn: () => api.get(`/api/admin/risk/registry?level=${riskLevel}`),
+    queryFn: () => api.get(`admin/risk/registry?level=${riskLevel}`),
     staleTime: 30_000,
   });
 
   const { data: studentDirectory, isFetching: isStudentsFetching } = useQuery<AdminDirectoryPage>({
-    queryKey: ['admin-students-paginated', studentSearch, studentOffset, studentSemesterFilter, studentBatchFilter, studentRiskOnly, studentSortBy, studentSortDir],
+    queryKey: ['admin-students-paginated', studentSearch, studentOffset, studentSemesterFilter, studentBatchFilter, studentSectionFilter, studentRiskOnly, studentSortBy, studentSortDir],
     queryFn: () =>
       api.get(
-        `/api/admin/students/paginated?limit=10&offset=${studentOffset}&sort_by=${studentSortBy}&sort_dir=${studentSortDir}${studentSearch ? `&search=${encodeURIComponent(studentSearch)}` : ''}${studentSemesterFilter !== 'ALL' ? `&semester=${studentSemesterFilter}` : ''}${studentBatchFilter !== 'ALL' ? `&batch=${encodeURIComponent(studentBatchFilter)}` : ''}${studentRiskOnly ? '&risk_only=true' : ''}`,
+        `admin/students/paginated?limit=10&offset=${studentOffset}&sort_by=${studentSortBy}&sort_dir=${studentSortDir}${studentSearch ? `&search=${encodeURIComponent(studentSearch)}` : ''}${studentSemesterFilter !== 'ALL' ? `&semester=${studentSemesterFilter}` : ''}${studentBatchFilter !== 'ALL' ? `&batch=${encodeURIComponent(studentBatchFilter)}` : ''}${studentSectionFilter !== 'ALL' ? `&section=${encodeURIComponent(studentSectionFilter)}` : ''}${studentRiskOnly ? '&risk_only=true' : ''}`,
       ),
     staleTime: 30_000,
   });
 
   const { data: leaderboard } = useQuery<SubjectLeaderboardResponse>({
     queryKey: ['admin-subject-leaderboard', selectedSubjectCode],
-    queryFn: () => api.get(`/api/admin/subject-leaderboard/${selectedSubjectCode}`),
+    queryFn: () => api.get(`admin/subject-leaderboard/${selectedSubjectCode}`),
     enabled: !!selectedSubjectCode,
     staleTime: 30_000,
   });
@@ -276,7 +309,7 @@ export default function AdminDashboard() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <button type="button" className="hero-button" onClick={() => exportWithToken('/api/admin/exports/batch-summary.xlsx', 'mca-batch-summary.xlsx')}>
+              <button type="button" className="hero-button" onClick={() => exportWithToken('admin/exports/batch-summary.xlsx', 'mca-batch-summary.xlsx')}>
                 <Download size={16} />
                 Excel Summary
               </button>
@@ -434,7 +467,14 @@ export default function AdminDashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data?.bottlenecks || []}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" vertical={false} />
-                  <XAxis dataKey="subject_code" />
+                  <XAxis 
+                    dataKey="subject_name" 
+                    interval={0} 
+                    angle={-15} 
+                    textAnchor="end" 
+                    height={60}
+                    tick={{ fontSize: 10 }}
+                  />
                   <YAxis />
                   <Tooltip />
                   <Bar dataKey="failure_rate" fill="var(--chart-3)" radius={[8, 8, 0, 0]} />
@@ -455,7 +495,7 @@ export default function AdminDashboard() {
                   {semesterOptions.map(s => <option key={s} value={String(s)}>Sem {s}</option>)}
                 </select>
                 <select className="input-field !py-2" value={selectedSubjectCode} onChange={(e) => setSelectedSubjectCode(e.target.value)}>
-                  {filteredSubjects.map(s => <option key={s.subject_code} value={s.subject_code}>{s.subject_code}</option>)}
+                  {filteredSubjects.map(s => <option key={s.subject_code} value={s.subject_code}>{s.subject_name}</option>)}
                 </select>
               </div>
             </div>
@@ -534,11 +574,27 @@ export default function AdminDashboard() {
                   <option value="ALL">All Semesters</option>
                   {semesterOptions.map(s => <option key={s} value={String(s)}>Sem {s}</option>)}
                 </select>
+                <select className="input-field !py-2" value={studentSectionFilter} onChange={(e) => setStudentSectionFilter(e.target.value)}>
+                  <option value="ALL">All Secs</option>
+                  <option value="A">Sec A</option>
+                  <option value="B">Sec B</option>
+                </select>
                 <button 
                   onClick={() => setStudentRiskOnly(!studentRiskOnly)}
                   className={`tab-chip ${studentRiskOnly ? '!bg-rose-500 !text-white' : ''}`}
                 >
                   Risk Only
+                </button>
+                <button
+                  onClick={() => {
+                    const batch = studentBatchFilter !== 'ALL' ? studentBatchFilter : '2025-2027';
+                    assignSectionsMutation.mutate(batch);
+                  }}
+                  disabled={assignSectionsMutation.isPending}
+                  className="tab-chip !bg-primary !text-primary-foreground disabled:opacity-50"
+                  title="Assign Sections A and B"
+                >
+                  {assignSectionsMutation.isPending ? 'Assigning...' : 'Assign Sections'}
                 </button>
               </div>
             </div>
@@ -553,6 +609,7 @@ export default function AdminDashboard() {
                       { key: 'name', label: 'Name' },
                       { key: 'roll_no', label: 'Roll No' },
                       { key: 'batch', label: 'Batch' },
+                      { key: 'section', label: 'Sec' },
                       { key: 'sem', label: 'Sem' },
                       { key: 'gpa', label: 'GPA' },
                       { key: 'attendance', label: 'Attn %' },
@@ -574,7 +631,7 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody>
                   {isStudentsFetching ? (
-                    Array.from({ length: 5 }).map((_, i) => <tr key={i}><td colSpan={8} className="px-4 py-8"><div className="skeleton h-8 w-full" /></td></tr>)
+                    Array.from({ length: 5 }).map((_, i) => <tr key={i}><td colSpan={9} className="px-4 py-8"><div className="skeleton h-8 w-full" /></td></tr>)
                   ) : studentDirectory?.items.map(item => (
                     <tr key={item.roll_no} className="border-t border-border/40 hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-4 font-mono font-bold text-primary">#{item.rank || '-'}</td>
@@ -584,8 +641,12 @@ export default function AdminDashboard() {
                           <p className="text-[10px] text-muted-foreground uppercase">{item.email?.split('@')[0]}</p>
                         </button>
                       </td>
-                      <td className="px-4 py-4 text-muted-foreground">{item.roll_no}</td>
+                      <td className="px-4 py-4 text-muted-foreground">
+                        <div>{item.roll_no}</div>
+                        {item.reg_no && <div className="text-[10px] opacity-70">Reg: {item.reg_no}</div>}
+                      </td>
                       <td className="px-4 py-4"><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold">{item.batch}</span></td>
+                      <td className="px-4 py-4 text-muted-foreground">{item.section || '-'}</td>
                       <td className="px-4 py-4 text-muted-foreground">{item.current_semester}</td>
                       <td className="px-4 py-4 font-bold">{Number(item.average_grade_points).toFixed(2)}</td>
                       <td className="px-4 py-4">
@@ -615,7 +676,7 @@ export default function AdminDashboard() {
                       <span className="text-xs font-mono font-bold text-primary">#{item.rank || '-'}</span>
                       <p className="truncate font-semibold group-hover:text-primary transition-colors">{item.name}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">{item.roll_no} · Sem {item.current_semester} · <span className="rounded-full bg-muted px-1.5 py-0.5">{item.batch}</span></p>
+                    <p className="text-xs text-muted-foreground">{item.roll_no}{item.reg_no ? ` / Reg: ${item.reg_no}` : ''} · Sem {item.current_semester} · <span className="rounded-full bg-muted px-1.5 py-0.5">{item.batch}</span> · Sec {item.section || '-'}</p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1 text-xs">
                     <span className="font-bold">{Number(item.average_grade_points).toFixed(2)} GPA</span>
@@ -648,6 +709,71 @@ export default function AdminDashboard() {
                   Next
                 </button>
               </div>
+            </div>
+          </article>
+        </div>
+      )}
+
+      {activeTab === 'Attendance' && (
+        <div className="space-y-6">
+          <article className="panel">
+            <div className="mb-6">
+              <p className="text-lg font-semibold text-foreground">Attendance Insight</p>
+              <p className="text-sm text-muted-foreground">Department-wide attendance tracking and defaulter analysis.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <Metric label="Avg Attendance" value={Number(data?.department_health?.average_attendance || 0).toFixed(1) + '%'} hint="Rollup across all batches" />
+              <Metric label="Defaulters" value={String(data?.attendance_defaulters?.length || 0)} hint="Students below 75%" />
+              <Metric label="Peak Absences" value="Mon-Fri" hint="Historical peak window" />
+              <Metric label="Stability" value="92%" hint="Trend consistency" />
+            </div>
+            <div className="space-y-4">
+              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Sub-75% Defaulter Review</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {data?.attendance_defaulters?.map(item => (
+                  <StudentStrip key={item.roll_no} item={item} onOpen={setSelectedRollNo} />
+                ))}
+              </div>
+            </div>
+          </article>
+        </div>
+      )}
+
+      {activeTab === 'Security' && (
+        <div className="space-y-6">
+          <article className="panel">
+            <div className="mb-6">
+              <p className="text-lg font-semibold text-foreground">Security & Access</p>
+              <p className="text-sm text-muted-foreground">Monitor system access, initial password status, and account security.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="rounded-[1.5rem] border border-border/70 bg-card/70 p-6">
+                <p className="text-sm font-bold text-foreground mb-4">Initial Passwords</p>
+                <div className="space-y-3">
+                  {studentDirectory?.items.filter(s => s.is_initial_password).slice(0, 5).map(s => (
+                    <div key={s.roll_no} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">{s.roll_no}</span>
+                      <span className="text-rose-500 font-bold">Unchanged</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-6 text-[10px] text-muted-foreground uppercase tracking-widest">Action recommended for {studentDirectory?.items.filter(s => s.is_initial_password).length || 0} students</p>
+              </div>
+            </div>
+          </article>
+        </div>
+      )}
+
+      {activeTab === 'Profile' && (
+        <div className="space-y-6">
+          <article className="panel">
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-6">
+                <Users size={32} />
+              </div>
+              <p className="text-lg font-semibold text-foreground">Admin Profile Settings</p>
+              <p className="text-sm text-muted-foreground mt-2 max-w-sm">Manage your administrative credentials and notification preferences.</p>
+              <button className="btn-primary mt-8">Update Credentials</button>
             </div>
           </article>
         </div>
