@@ -12,6 +12,7 @@ import {
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import { SectionTitle, StatCard, SortHeader } from '../components/DashboardComponents';
+import StudentTimetable from '../components/StudentTimetable';
 import api from '../api/client';
 import { buildStudentIntelligence, fmt, num, CHART_COLORS } from '../services/academicService';
 
@@ -395,6 +396,10 @@ const Dashboard = () => {
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="glass rounded-[2.5rem] p-8 card-premium col-span-12">
+            <StudentTimetable semesterOverride={2} />
           </div>
         </div>
       )}

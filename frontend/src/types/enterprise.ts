@@ -44,6 +44,15 @@ export interface FacultyImpactMatrixItem {
   impact_label: string;
 }
 
+export interface StaffProfile {
+  id: number;
+  username: string;
+  name: string;
+  email?: string | null;
+  department?: string | null;
+  created_at?: string | null;
+}
+
 export interface PlacementCandidate {
   roll_no: string;
   student_name: string;

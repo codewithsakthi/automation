@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core import auth
@@ -9,6 +10,7 @@ from ...models import base as models
 from ...schemas import base as schemas
 from ...core.limiter import limiter
 from ...services.student_service import StudentService
+from ...services.timetable_service import get_section_timetable
 
 # Common responses for students router
 STUDENT_RESPONSES = {
@@ -17,6 +19,33 @@ STUDENT_RESPONSES = {
 }
 
 router = APIRouter(tags=["Students"], responses=STUDENT_RESPONSES)
+
+@router.get(
+    "/timetable",
+    response_model=List[schemas.StaffTimeTableEntry],
+    summary="Get Timetable for Student",
+    description="Returns weekly timetable for the student's section with fallback static data for MCA II semester.",
+)
+async def get_student_timetable(
+    request: Request,
+    section: Optional[str] = Query(None, description="Override section, defaults to student's section"),
+    semester: Optional[int] = Query(None, description="Override semester, defaults to student's current semester"),
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    # Determine the caller's student profile (if present) to derive defaults
+    student = None
+    if current_user.role.name == "student":
+        result = await db.execute(select(models.Student).filter(models.Student.id == current_user.id))
+        student = result.scalars().first()
+        if not student:
+            raise HTTPException(status_code=404, detail="Student record not found")
+
+    derived_section = (section or student.section if student else section) or "A"
+    derived_semester = semester or (student.current_semester if student else None) or 2
+
+    timetable = await get_section_timetable(db=db, section=derived_section, semester=derived_semester)
+    return timetable
 
 @router.get(
     "/performance/{roll_no}", 

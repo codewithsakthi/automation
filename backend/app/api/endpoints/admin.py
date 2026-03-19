@@ -12,6 +12,7 @@ from ...schemas import base as schemas
 from ...services.admin_service import AdminService
 from ...core.limiter import limiter
 from ...services import enterprise_analytics
+from sqlalchemy import select, update, delete, func
 
 # Enum Definitions for API Constraints
 class RiskLevel(str, Enum):
@@ -81,9 +82,12 @@ async def get_admin_overview(
     if batch and batch.upper() != 'ALL':
         directory = [d for d in directory if (d.batch or '').upper() == batch.upper()]
     
+    staff_count_res = await db.execute(select(func.count(models.Staff.id)))
+    staff_count = staff_count_res.scalar() or 0
+
     return schemas.AdminOverview(
         total_students=len(directory),
-        total_staff=0,
+        total_staff=staff_count,
         total_admins=1,
     )
 
@@ -212,6 +216,181 @@ async def get_risk_registry(
     """
     require_admin(current_user)
     return await enterprise_analytics.get_risk_registry(db, CURRICULUM_CREDITS, risk_level=risk_level.value if risk_level else None, limit=limit, offset=offset, sort_by=sort_by.value)
+
+@router.get(
+    "/staff",
+    response_model=list[schemas.StaffProfile],
+    summary="List Staff",
+    description="Get all staff profiles with usernames and departments.",
+)
+async def list_staff(
+    search: str = Query(default="", description="Optional search across name, username, email"),
+    current_user: models.User = Depends(auth.get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin(current_user)
+    stmt = (
+        select(models.Staff, models.User)
+        .join(models.User, models.Staff.id == models.User.id)
+        .order_by(models.Staff.name)
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+    profiles: list[schemas.StaffProfile] = []
+    for staff, user in rows:
+        blob = {
+            "id": staff.id,
+            "username": user.username,
+            "name": staff.name,
+            "email": staff.email,
+            "department": staff.department,
+            "created_at": staff.created_at,
+        }
+        if search:
+            s = search.lower()
+            if s not in (staff.name or "").lower() and s not in (user.username or "").lower() and s not in (staff.email or "").lower():
+                continue
+        profiles.append(schemas.StaffProfile(**blob))
+    return profiles
+
+
+@router.post(
+    "/staff",
+    response_model=schemas.StaffProfile,
+    summary="Create Staff User",
+    description="Add a new staff user with login credentials and profile details.",
+)
+async def create_staff(
+    payload: schemas.StaffCreate,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin(current_user)
+
+    # Validate username uniqueness
+    existing_user = await db.execute(select(models.User).filter(models.User.username == payload.username))
+    if existing_user.scalars().first():
+        raise HTTPException(status_code=400, detail="Username already exists")
+
+    # Resolve staff role
+    role_res = await db.execute(select(models.Role).filter(models.Role.name == "staff"))
+    staff_role = role_res.scalars().first()
+    if not staff_role:
+        raise HTTPException(status_code=400, detail="Staff role not configured")
+
+    hashed_pwd = auth.get_password_hash(payload.password)
+
+    user = models.User(
+        username=payload.username,
+        password_hash=hashed_pwd,
+        role_id=staff_role.id,
+        is_initial_password=True,
+    )
+    db.add(user)
+    await db.flush()
+
+    staff = models.Staff(
+        id=user.id,
+        name=payload.name,
+        email=payload.email,
+        department=payload.department,
+    )
+    db.add(staff)
+    await db.commit()
+    await db.refresh(user)
+    await db.refresh(staff)
+
+    return schemas.StaffProfile(
+        id=staff.id,
+        username=user.username,
+        name=staff.name,
+        email=staff.email,
+        department=staff.department,
+        created_at=staff.created_at,
+    )
+
+
+@router.patch(
+    "/staff/{staff_id}",
+    response_model=schemas.StaffProfile,
+    summary="Update Staff User",
+    description="Edit staff profile or reset password.",
+)
+async def update_staff(
+    staff_id: int = Path(..., ge=1),
+    payload: schemas.StaffUpdate = None,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin(current_user)
+    if payload is None:
+        raise HTTPException(status_code=400, detail="No update data provided")
+
+    staff_res = await db.execute(
+        select(models.Staff, models.User).join(models.User, models.Staff.id == models.User.id).filter(models.Staff.id == staff_id)
+    )
+    row = staff_res.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    staff, user = row
+
+    # Update basic fields
+    if payload.name is not None:
+        staff.name = payload.name
+    if payload.email is not None:
+        staff.email = payload.email
+    if payload.department is not None:
+        staff.department = payload.department
+    if payload.password:
+        user.password_hash = auth.get_password_hash(payload.password)
+        user.is_initial_password = True
+
+    await db.commit()
+    await db.refresh(staff)
+    await db.refresh(user)
+
+    return schemas.StaffProfile(
+        id=staff.id,
+        username=user.username,
+        name=staff.name,
+        email=staff.email,
+        department=staff.department,
+        created_at=staff.created_at,
+    )
+
+@router.delete(
+    "/staff/{staff_id}",
+    status_code=204,
+    summary="Delete Staff User",
+    description="Remove a staff account and related timetable/assignment links.",
+)
+async def delete_staff(
+    staff_id: int = Path(..., ge=1),
+    current_user: models.User = Depends(auth.get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin(current_user)
+
+    # Ensure the staff exists and load matching user
+    staff_res = await db.execute(
+        select(models.Staff, models.User)
+        .join(models.User, models.Staff.id == models.User.id)
+        .filter(models.Staff.id == staff_id)
+    )
+    row = staff_res.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Staff not found")
+
+    # Remove dependent records first (no ON DELETE CASCADE defined)
+    await db.execute(delete(models.TimeTable).where(models.TimeTable.faculty_id == staff_id))
+    await db.execute(delete(models.FacultySubjectAssignment).where(models.FacultySubjectAssignment.faculty_id == staff_id))
+
+    # Remove staff and linked user
+    await db.execute(delete(models.Staff).where(models.Staff.id == staff_id))
+    await db.execute(delete(models.User).where(models.User.id == staff_id))
+
+    await db.commit()
+    return Response(status_code=204)
 
 @router.get(
     "/export/batch-summary",

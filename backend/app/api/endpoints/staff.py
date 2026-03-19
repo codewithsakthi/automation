@@ -10,8 +10,33 @@ from ...core.database import get_db
 from ...models import base as models
 from ...schemas import base as schemas
 from ...core.limiter import limiter
+from ...services.timetable_service import get_faculty_timetable
 
 router = APIRouter(tags=["Staff"])
+
+
+@router.get(
+    "/schedule",
+    response_model=List[schemas.StaffTimeTableEntry],
+    summary="Get Staff Timetable",
+    description="Return weekly timetable entries for the logged-in faculty. Falls back to the latest MCA II semester timetable if no DB rows exist.",
+)
+async def get_staff_schedule(
+    section: Optional[str] = Query(None, description="Section filter, e.g., A or B"),
+    semester: Optional[int] = Query(None, description="Semester filter"),
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    if current_user.role.name != "staff":
+        raise HTTPException(status_code=403, detail="Access forbidden: Staff only")
+
+    timetable = await get_faculty_timetable(
+        db=db,
+        faculty_id=current_user.id,
+        section=section,
+        semester=semester,
+    )
+    return timetable
 
 @router.get(
     "/me",

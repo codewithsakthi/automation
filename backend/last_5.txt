@@ -1,5 +1,0 @@
-        left join attendance_agg aa on aa.roll_no = r.roll_no
-    
-        order by r.roll_no desc
-    ]
-(Background on this error at: https://sqlalche.me/e/20/f405)

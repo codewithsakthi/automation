@@ -1066,6 +1066,30 @@ class StaffTimeTableEntry(BaseModel):
     section: Optional[str] = None
     semester: Optional[int] = None
 
+
+class StaffProfile(BaseModel):
+    id: int
+    username: str
+    name: str
+    email: Optional[str] = None
+    department: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
+class StaffCreate(BaseModel):
+    username: str
+    password: str
+    name: str
+    email: Optional[str] = None
+    department: Optional[str] = None
+
+
+class StaffUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    department: Optional[str] = None
+    password: Optional[str] = None
+
 class AttendanceMarkRequest(BaseModel):
     subject_id: int
     date: str # YYYY-MM-DD

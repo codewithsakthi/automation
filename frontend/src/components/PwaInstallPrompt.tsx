@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 // Minimal wrong definitions for the BeforeInstallPrompt event.
 // Browsers expose this event for Android install prompts.
@@ -63,9 +64,26 @@ export default function PwaInstallPrompt() {
   };
 
   if (!showPrompt && !showIosPrompt) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
-    <div className="fixed bottom-4 left-1/2 z-50 flex w-[min(420px,calc(100%-32px))] -translate-x-1/2 flex-col gap-2 rounded-2xl bg-card/90 p-3 shadow-lg backdrop-blur-sm ring-1 ring-border">
+  const handleClosePrompt = () => {
+    setDeferredPrompt(null);
+    setShowPrompt(false);
+    // Mark as installed so dismissing doesn't keep resurfacing the prompt.
+    setIsInstalled(true);
+  };
+
+  return createPortal(
+    <div className="fixed bottom-4 right-4 z-[9999] flex w-[min(420px,calc(100%-24px))] max-w-[90vw] flex-col gap-2 rounded-2xl bg-card/95 p-4 pt-5 pr-5 shadow-xl backdrop-blur-md ring-1 ring-border sm:bottom-6 sm:right-6">
+      <button
+        type="button"
+        aria-label="Close install prompt"
+        onClick={handleClosePrompt}
+        className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+      >
+        <span className="text-base leading-none">✕</span>
+      </button>
+
       {showPrompt && (
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -94,6 +112,7 @@ export default function PwaInstallPrompt() {
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
