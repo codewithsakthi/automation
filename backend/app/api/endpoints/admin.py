@@ -384,6 +384,7 @@ async def delete_staff(
     # Remove dependent records first (no ON DELETE CASCADE defined)
     await db.execute(delete(models.TimeTable).where(models.TimeTable.faculty_id == staff_id))
     await db.execute(delete(models.FacultySubjectAssignment).where(models.FacultySubjectAssignment.faculty_id == staff_id))
+    await db.execute(delete(models.RefreshToken).where(models.RefreshToken.user_id == staff_id))
 
     # Remove staff and linked user
     await db.execute(delete(models.Staff).where(models.Staff.id == staff_id))

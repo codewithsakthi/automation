@@ -58,7 +58,15 @@ const Login = () => {
       }
       
       setAuth(userData, tokenPayload.access_token, tokenPayload.refresh_token);
-      navigate(role === 'admin' ? '/admin' : '/dashboard');
+
+      // Send people to the right workspace by role
+      if (role === 'admin') {
+        navigate('/admin');
+      } else if (role === 'staff') {
+        navigate('/staff');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.message || 'Invalid credentials');
     } finally {

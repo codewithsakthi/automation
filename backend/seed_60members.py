@@ -71,20 +71,21 @@ async def seed_db():
 
             # 4. Read Students from CSV and fetch RegNo from snapshots
             import json
-            csv_path = r"c:\Users\devel\automation\2025-2027.csv"
-            snapshots_dir = r"c:\Users\devel\automation\data"
+            project_root = Path(__file__).resolve().parents[1]
+            csv_path = project_root / "pipeline" / "2025-2027.csv"
+            snapshots_dir = project_root / "data"
             
             result = await db.execute(select(models.Role).filter(models.Role.name == 'student'))
             student_role = result.scalars().first()
 
-            if not os.path.exists(csv_path):
+            if not csv_path.exists():
                 logger.error(f"CSV file not found at: {csv_path}")
                 return
 
             students_data = []
             logger.info(f"Reading students from {csv_path} and enrichment from {snapshots_dir}...")
             
-            with open(csv_path, 'r', encoding='utf-8-sig') as f:
+            with csv_path.open('r', encoding='utf-8-sig') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     roll_no = row['Roll No'].strip()
@@ -94,10 +95,10 @@ async def seed_db():
                     
                     # Fetch RegNo from snapshot
                     reg_no = None
-                    snapshot_path = os.path.join(snapshots_dir, f"{roll_no}_data.json")
-                    if os.path.exists(snapshot_path):
+                    snapshot_path = snapshots_dir / f"{roll_no}_data.json"
+                    if snapshot_path.exists():
                         try:
-                            with open(snapshot_path, 'r') as sf:
+                            with snapshot_path.open('r', encoding='utf-8') as sf:
                                 sdata = json.load(sf)
                                 reg_no = sdata.get('ParentPortal', {}).get('Info', {}).get('RegNo')
                         except Exception as e:

@@ -12,15 +12,15 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const ADMIN_ITEMS = [
-  { label: 'Home',     icon: LayoutDashboard, sectionId: 'command-center',     tab: '' },
-  { label: 'Risk',     icon: ShieldAlert,     sectionId: 'risk-radar',         tab: '' },
-  { label: 'Leaders',  icon: Trophy,          sectionId: '',                    tab: 'Performance' },
+  { label: 'Home',     icon: LayoutDashboard, sectionId: 'command-center',     tab: 'Overview' },
+  { label: 'Risk',     icon: ShieldAlert,     sectionId: '',                    tab: 'Risk' },
+  { label: 'Leaders',  icon: Trophy,          sectionId: '',                    tab: 'Leaderboard' },
   { label: 'Pipeline', icon: Target,          sectionId: '',                    tab: 'Placements' },
   { label: 'Students', icon: Users,           sectionId: '',                    tab: 'Students' },
 ];
 
 const STUDENT_ITEMS = [
-  { label: 'Overview',   icon: LayoutDashboard, route: '/dashboard', tab: '' },
+  { label: 'Overview',   icon: LayoutDashboard, route: '/dashboard', tab: 'Overview' },
   { label: 'Attendance', icon: Calendar,        route: '/dashboard', tab: 'Attendance' },
   { label: 'Analytics',  icon: BarChart2,       route: '/dashboard', tab: 'Performance' },
   { label: 'Profile',    icon: Activity,        route: '/dashboard', tab: 'Profile' },
@@ -46,11 +46,11 @@ export default function MobileBottomNav({ role = 'admin' }: MobileBottomNavProps
 
   // Derive active tab from URL
   const searchParams = new URLSearchParams(location.search);
-  const currentTab = searchParams.get('tab') || '';
+  const currentTab = searchParams.get('tab') || 'Overview';
 
   // Track which section is in view (only when on Overview tab)
   useEffect(() => {
-    if (role !== 'admin' || currentTab !== '') return;
+    if (role !== 'admin' || currentTab !== 'Overview') return;
     const container = document.getElementById(MAIN_SCROLL_ID);
     if (!container) return;
 
@@ -78,17 +78,22 @@ export default function MobileBottomNav({ role = 'admin' }: MobileBottomNavProps
 
   const handleAdminItemClick = (item: typeof ADMIN_ITEMS[0]) => {
     if (item.tab) {
-      // Navigate to a tab page via URL
-      navigate(`/admin?tab=${item.tab}`);
-    } else if (item.sectionId) {
-      // Navigate back to overview first if on another tab
-      if (currentTab !== '') {
-        navigate('/admin');
-        // Small delay to let overview render before scrolling
-        setTimeout(() => scrollToSection(item.sectionId), 150);
-      } else {
+      const isAlreadyOnTab = currentTab === item.tab;
+      
+      if (isAlreadyOnTab && item.sectionId) {
+        // Just scroll within the current tab if sectionId exists
         scrollToSection(item.sectionId);
+      } else {
+        // Navigate to the tab
+        navigate(`?tab=${item.tab}`);
+        
+        // If it's Overview and we have a section, scroll to it after a short delay
+        if (item.tab === 'Overview' && item.sectionId) {
+          setTimeout(() => scrollToSection(item.sectionId), 100);
+        }
       }
+    } else if (item.sectionId) {
+      scrollToSection(item.sectionId);
     }
   };
 

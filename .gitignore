@@ -7,7 +7,7 @@ backend/profiles/
 *.json
 !package.json
 !package-lock.json
-!subject_credits.json
+!pipeline/subject_credits.json
 .env
 .env.*
 *.log

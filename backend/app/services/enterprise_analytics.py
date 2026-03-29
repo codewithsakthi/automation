@@ -281,7 +281,7 @@ async def get_subject_leaderboard(
 ) -> schemas.SubjectLeaderboardResponse:
     query = text(
         _base_ctes(curriculum_credits)
-        + f"""
+        + """
         ,
         ranked_subject AS (
             SELECT
@@ -302,17 +302,19 @@ async def get_subject_leaderboard(
                     PARTITION BY me.subject_code, me.batch
                     ORDER BY me.total_marks DESC, COALESCE(me.effective_internal_marks, me.total_marks) DESC
                 ) AS batch_rank,
-                ROUND((PERCENT_RANK() OVER (PARTITION BY me.subject_code ORDER BY me.total_marks) * 100)::numeric, 2) AS percentile,
+                ROUND((PERCENT_RANK() OVER (PARTITION BY me.subject_code ORDER BY me.total_marks ASC) * 100)::numeric, 2) AS percentile,
                 COUNT(*) OVER () AS total_count
             FROM marks_enriched me
             WHERE lower(me.subject_code) = lower(:subject_code)
         )
         SELECT * FROM ranked_subject
-        ORDER BY class_rank ASC, batch_rank ASC, total_marks DESC
+        ORDER BY total_marks DESC, class_rank ASC
         OFFSET :offset LIMIT :limit
         """
     )
+
     rows = (await db.execute(query, {"subject_code": subject_code, "limit": limit, "offset": offset})).mappings().all()
+
     if not rows:
         meta_query = text(
             """
@@ -328,47 +330,56 @@ async def get_subject_leaderboard(
         )
         meta = (await db.execute(meta_query, {"subject_code": subject_code})).mappings().first()
         if not meta:
-            raise HTTPException(status_code=404, detail="Subject leaderboard not found")
+            raise HTTPException(status_code=404, detail=f"Subject {subject_code} not found")
+        
         return schemas.SubjectLeaderboardResponse(
             subject_code=meta["subject_code"],
             subject_name=meta["subject_name"],
             top_leaderboard=[],
             bottom_leaderboard=[],
-            pagination=schemas.PaginationMeta(total=0, limit=limit, offset=offset),
+            pagination=schemas.PaginationMeta(total=0, limit=limit, offset=offset)
         )
 
     entries = [schemas.LeaderboardEntry(**{k: v for k, v in dict(row).items() if k != "total_count"}) for row in rows]
     subject_name = entries[0].subject_name
     total = int(rows[0]["total_count"])
+
+    # For bottom performers, we reuse the same ranking logic but sort differently
     bottom_query = text(
         _base_ctes(curriculum_credits)
         + """
-        SELECT
-            me.roll_no,
-            me.student_name,
-            me.batch,
-            me.current_semester,
-            me.subject_code,
-            me.subject_name,
-            me.total_marks,
-            me.internal_marks,
-            me.grade,
-            RANK() OVER (
-                PARTITION BY me.subject_code, me.batch, me.current_semester
-                ORDER BY me.total_marks ASC, COALESCE(me.effective_internal_marks, me.total_marks) ASC
-            ) AS class_rank,
-            RANK() OVER (
-                PARTITION BY me.subject_code, me.batch
-                ORDER BY me.total_marks ASC, COALESCE(me.effective_internal_marks, me.total_marks) ASC
-            ) AS batch_rank,
-            ROUND((PERCENT_RANK() OVER (PARTITION BY me.subject_code ORDER BY me.total_marks) * 100)::numeric, 2) AS percentile
-        FROM marks_enriched me
-        WHERE lower(me.subject_code) = lower(:subject_code)
-        ORDER BY class_rank ASC, batch_rank ASC, total_marks ASC
+        ,
+        ranked_subject AS (
+            SELECT
+                me.roll_no,
+                me.student_name,
+                me.batch,
+                me.current_semester,
+                me.subject_code,
+                me.subject_name,
+                me.total_marks,
+                me.internal_marks,
+                me.grade,
+                RANK() OVER (
+                    PARTITION BY me.subject_code, me.batch, me.current_semester
+                    ORDER BY me.total_marks DESC, COALESCE(me.effective_internal_marks, me.total_marks) DESC
+                ) AS class_rank,
+                RANK() OVER (
+                    PARTITION BY me.subject_code, me.batch
+                    ORDER BY me.total_marks DESC, COALESCE(me.effective_internal_marks, me.total_marks) DESC
+                ) AS batch_rank,
+                ROUND((PERCENT_RANK() OVER (PARTITION BY me.subject_code ORDER BY me.total_marks ASC) * 100)::numeric, 2) AS percentile
+            FROM marks_enriched me
+            WHERE lower(me.subject_code) = lower(:subject_code)
+        )
+        SELECT * FROM ranked_subject
+        ORDER BY total_marks ASC, class_rank DESC
         LIMIT :limit
         """
     )
+    
     bottom_rows = (await db.execute(bottom_query, {"subject_code": subject_code, "limit": limit})).mappings().all()
+    bottom_entries = [schemas.LeaderboardEntry(**dict(row)) for row in bottom_rows]
 
     return schemas.SubjectLeaderboardResponse(
         subject_code=subject_code,
@@ -1025,7 +1036,7 @@ async def get_command_center(
     bottlenecks = await get_subject_bottlenecks(db, curriculum_credits, subject_code=None, limit=6, offset=0, sort_by="failure_rate")
     faculty = await get_faculty_impact_matrix(db, curriculum_credits, subject_code=None, faculty_id=None, limit=6, offset=0)
     placements = await get_placement_readiness(db, curriculum_credits, cgpa_threshold=6.5, limit=8, offset=0, sort_by="cgpa")
-    watchlist = await get_risk_registry(db, curriculum_credits, risk_level="Moderate", limit=8, offset=0, sort_by="risk_score")
+    watchlist = await get_risk_registry(db, curriculum_credits, risk_level=None, limit=8, offset=0, sort_by="risk_score")
     spotlight_results = await spotlight_search(db, query=spotlight, limit=8) if spotlight else schemas.SpotlightSearchResponse(results=[])
     batch_health = await _get_batch_health(db, curriculum_credits)
     semester_pulse = await _get_semester_pulse(db, curriculum_credits)
@@ -1130,6 +1141,12 @@ async def get_risk_registry(
             roll_no,
             student_name,
             risk_score,
+            CASE 
+                WHEN risk_score >= 70 THEN 'Critical'
+                WHEN risk_score >= 55 THEN 'High'
+                WHEN risk_score >= 35 THEN 'Moderate'
+                ELSE 'Low'
+            END AS risk_level,
             attendance_percentage,
             internal_avg,
             ROUND(GREATEST(0, previous_sgpa - cgpa_proxy)::numeric, 2) AS gpa_drop_factor,

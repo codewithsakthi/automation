@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Users, AlertCircle, CheckCircle2, Loader2, Send } from 'lucide-react';
 import api from '../api/client';
 
@@ -7,37 +7,70 @@ export default function AttendancePanel({ subjects }) {
   const queryClient = useQueryClient();
   const [selectedSubjectId, setSelectedSubjectId] = useState(subjects[0]?.subject_id || '');
   const [hour, setHour] = useState(1);
-  const [absenteesText, setAbsenteesText] = useState('');
+  const [absentees, setAbsentees] = useState([]);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [error, setError] = useState('');
 
   const selectedSubject = subjects.find(s => s.subject_id === parseInt(selectedSubjectId));
+
+  const { data: students, isLoading: isLoadingStudents } = useQuery({
+    queryKey: ['staff-subject-students', selectedSubjectId],
+    queryFn: () => api.get(`staff/subjects/${selectedSubjectId}/students`).then(res => res.data),
+    enabled: !!selectedSubjectId
+  });
 
   const mutation = useMutation({
     mutationFn: (data) => api.post('staff/attendance', data),
     onSuccess: () => {
-      setAbsenteesText('');
-      // Optional: show toast
+      setAbsentees([]);
+      setError('');
+      queryClient.invalidateQueries({ queryKey: ['staff-attendance-latest'] });
     },
+    onError: (err) => {
+      const msg = err?.response?.data?.detail || err?.message || 'Could not submit attendance';
+      setError(msg);
+    }
   });
 
   const handleSubmit = () => {
     if (!selectedSubject) return;
 
-    // Parse roll numbers from text (comma or newline separated)
-    const absentees = absenteesText
-      .split(/[\n,]+/)
-      .map(s => s.trim())
-      .filter(s => s !== '');
-
     mutation.mutate({
       subject_id: selectedSubject.subject_id,
       date,
       hour: parseInt(hour),
-      absentees,
+      absentees: absentees,
       section: selectedSubject.section || 'A',
       semester: selectedSubject.semester
     });
   };
+
+  const toggleAttendance = (rollNo) => {
+    setAbsentees(prev => 
+      prev.includes(rollNo) 
+        ? prev.filter(r => r !== rollNo) 
+        : [...prev, rollNo]
+    );
+  };
+
+  const markAllPresent = () => setAbsentees([]);
+  const markAllAbsent = () => {
+    if (students) setAbsentees(students.map(s => s.roll_no));
+  };
+
+  // Reset absentees if subject changes
+  React.useEffect(() => {
+    setAbsentees([]);
+  }, [selectedSubjectId]);
+
+  if (!subjects?.length) {
+    return (
+      <div className="panel border-dashed border-border text-center py-10">
+        <p className="text-lg font-semibold mb-2">No subjects assigned</p>
+        <p className="text-sm text-muted-foreground">Ask the admin to assign your MCA subjects before marking attendance.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -49,8 +82,8 @@ export default function AttendancePanel({ subjects }) {
               Mark Absentees
             </h3>
             
-            <div className="grid gap-4 md:grid-cols-2 mb-6">
-              <div className="space-y-2">
+            <div className="grid gap-4 md:grid-cols-3 mb-6">
+              <div className="space-y-2 col-span-2">
                 <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Subject</label>
                 <select 
                   value={selectedSubjectId} 
@@ -63,19 +96,7 @@ export default function AttendancePanel({ subjects }) {
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Date</label>
-                <input 
-                  type="date" 
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="input-field w-full"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 mb-6">
-              <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Hour / Session</label>
+                <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Hour</label>
                 <select 
                   value={hour} 
                   onChange={(e) => setHour(e.target.value)}
@@ -86,30 +107,75 @@ export default function AttendancePanel({ subjects }) {
                   ))}
                 </select>
               </div>
-              <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10">
-                <p className="text-xs text-primary font-bold uppercase mb-1">PRO-TIP</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  The system marks all students as <span className="text-foreground font-bold">Present</span> by default. 
-                  Just list the roll numbers of students who are absent.
-                </p>
-              </div>
             </div>
 
-            <div className="space-y-2 mb-6">
-              <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Absentees (Roll Numbers)</label>
-              <textarea 
-                placeholder="Ex: 258301, 258315, 258322"
-                value={absenteesText}
-                onChange={(e) => setAbsenteesText(e.target.value)}
-                rows={5}
-                className="input-field w-full resize-none font-mono text-sm"
-              />
-              <p className="text-[10px] text-muted-foreground">Separate roll numbers with commas or new lines.</p>
+            <div className="space-y-4 mb-6">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Student Roster</label>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <button
+                    type="button"
+                    onClick={markAllPresent}
+                    className="tab-chip flex items-center gap-1 px-3 py-1"
+                    disabled={mutation.isPending || isLoadingStudents}
+                  >
+                    <CheckCircle2 size={14} className="text-emerald-500" /> All Present
+                  </button>
+                  <button
+                    type="button"
+                    onClick={markAllAbsent}
+                    className="tab-chip flex items-center gap-1 px-3 py-1"
+                    disabled={mutation.isPending || isLoadingStudents}
+                  >
+                    <AlertCircle size={14} className="text-rose-500" /> All Absent
+                  </button>
+                </div>
+              </div>
+
+              {isLoadingStudents ? (
+                <div className="flex items-center justify-center py-12 bg-muted/20 rounded-2xl border border-border/40">
+                  <Loader2 size={24} className="animate-spin text-muted-foreground" />
+                </div>
+              ) : students?.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-80 overflow-y-auto p-1 py-2">
+                    {students.map(student => {
+                      const isAbsent = absentees.includes(student.roll_no);
+                      return (
+                        <div 
+                          key={student.id}
+                          onClick={() => toggleAttendance(student.roll_no)}
+                          className={`p-3 rounded-xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all select-none
+                            ${isAbsent 
+                              ? 'bg-rose-500/10 border-rose-500/30 text-rose-600' 
+                              : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600'
+                            }`}
+                        >
+                          <span className="text-xs font-black tracking-widest mb-1">{student.roll_no}</span>
+                          <span className="text-xs font-medium truncate w-full">{student.name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-4">
+                    <p className="text-[11px] font-semibold text-emerald-500">
+                      {students.length - absentees.length} Present
+                    </p>
+                    <p className="text-[11px] font-semibold text-rose-500">
+                      {absentees.length} Absent
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="p-8 text-center bg-muted/20 border border-border/40 rounded-2xl">
+                  <p className="text-sm font-semibold text-muted-foreground">No students enrolled</p>
+                </div>
+              )}
             </div>
 
             <button 
               onClick={handleSubmit}
-              disabled={mutation.isPending || !absenteesText.trim()}
+              disabled={mutation.isPending || isLoadingStudents || !students}
               className="btn-primary w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-base"
             >
               {mutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
@@ -119,6 +185,11 @@ export default function AttendancePanel({ subjects }) {
             {mutation.isSuccess && (
               <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-sm flex items-center gap-2">
                 <CheckCircle2 size={16} /> Attendance submitted successfully.
+              </div>
+            )}
+            {error && (
+              <div className="mt-3 p-3 rounded-xl bg-rose-500/10 text-rose-600 border border-rose-500/20 text-sm">
+                {error}
               </div>
             )}
           </div>
@@ -133,12 +204,17 @@ export default function AttendancePanel({ subjects }) {
                 <span className="font-bold">{selectedSubject?.student_count || 0}</span>
               </div>
               <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">Semester</span>
-                <span className="font-bold">{selectedSubject?.semester || 1}</span>
+                <span className="text-muted-foreground">Date</span>
+                <input 
+                  type="date" 
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="bg-transparent border-none text-right font-bold w-32 outline-none"
+                />
               </div>
               <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">Section</span>
-                <span className="font-bold">{selectedSubject?.section || 'A'}</span>
+                <span className="text-muted-foreground">Semester</span>
+                <span className="font-bold">{selectedSubject?.semester || 1}</span>
               </div>
             </div>
           </div>

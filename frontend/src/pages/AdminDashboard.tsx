@@ -1,4 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import LeaderboardView from '../features/admin/views/LeaderboardView';
+import PlacementView from '../features/admin/views/PlacementView';
+import RiskRadarView from '../features/admin/views/RiskRadarView';
 
 
 
@@ -135,6 +138,7 @@ import { useThemeStore } from '../store/themeStore';
 
 
 import StudentProfile360 from '../components/StudentProfile360';
+import AICopilot from '../components/AICopilot';
 
 
 
@@ -1525,70 +1529,29 @@ export default function AdminDashboard() {
 
 
 
-  useEffect(() => {
-
-
-
-
-
-
-
+    useEffect(() => {
     const hash = window.location.hash;
-
-
-
-
-
-
-
     if (hash && activeTab === 'Overview') {
-
-
-
-
-
-
-
-      const element = document.getElementById(hash.substring(1));
-
-
-
-
-
-
-
-      if (element) {
-
-
-
-
-
-
-
-        element.scrollIntoView({ behavior: 'smooth' });
-
-
-
-
-
-
-
-      }
-
-
-
-
-
-
-
+      const tryScroll = () => {
+        const element = document.getElementById(hash.substring(1));
+        const mainScroll = document.getElementById('main-scroll');
+        if (element && mainScroll) {
+          const containerTop = mainScroll.getBoundingClientRect().top;
+          const elementTop = element.getBoundingClientRect().top;
+          const topOffset = elementTop - containerTop + mainScroll.scrollTop - 60;
+          
+          mainScroll.scrollTo({
+            top: topOffset > 0 ? topOffset : 0,
+            behavior: 'smooth'
+          });
+        }
+      };
+      
+      setTimeout(tryScroll, 100);
+      setTimeout(tryScroll, 500);
+      setTimeout(tryScroll, 1500);
+      setTimeout(tryScroll, 3000);
     }
-
-
-
-
-
-
-
   }, [activeTab]);
 
 
@@ -1653,7 +1616,7 @@ export default function AdminDashboard() {
 
 
 
-  const [placementSearch, setPlacementSearch] = useState('');
+  
 
 
 
@@ -2475,7 +2438,7 @@ export default function AdminDashboard() {
 
 
 
-  const columns = useMemo<ColumnDef<PlacementCandidate>[]>(() => [
+  
 
 
 
@@ -2483,7 +2446,6 @@ export default function AdminDashboard() {
 
 
 
-    { accessorKey: 'student_name', header: 'Student' },
 
 
 
@@ -2491,207 +2453,8 @@ export default function AdminDashboard() {
 
 
 
-    { accessorKey: 'batch', header: 'Batch' },
 
-
-
-
-
-
-
-    { accessorKey: 'cgpa', header: 'CGPA' },
-
-
-
-
-
-
-
-    { accessorKey: 'coding_subject_score', header: 'Coding Score' },
-
-
-
-
-
-
-
-    {
-
-
-
-
-
-
-
-      accessorKey: 'placement_ready',
-
-
-
-
-
-
-
-      header: 'Status',
-
-
-
-
-
-
-
-      cell: ({ row }) => (
-
-
-
-
-
-
-
-        <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest ${
-
-
-
-
-
-
-
-          row.original.placement_ready ? 'bg-emerald-500/12 text-emerald-600' : 'bg-amber-500/12 text-amber-600'
-
-
-
-
-
-
-
-        }`}>
-
-
-
-
-
-
-
-          {row.original.placement_ready ? 'Ready' : 'In Progress'}
-
-
-
-
-
-
-
-        </span>
-
-
-
-
-
-
-
-      ),
-
-
-
-
-
-
-
-    },
-
-
-
-
-
-
-
-  ], []);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  const table = useReactTable({
-
-
-
-
-
-
-
-    data: data?.placement_ready || [],
-
-
-
-
-
-
-
-    columns,
-
-
-
-
-
-
-
-    state: { sorting, globalFilter: placementSearch },
-
-
-
-
-
-
-
-    onSortingChange: setSorting,
-
-
-
-
-
-
-
-    onGlobalFilterChange: setPlacementSearch,
-
-
-
-
-
-
-
-    getCoreRowModel: getCoreRowModel(),
-
-
-
-
-
-
-
-    getFilteredRowModel: getFilteredRowModel(),
-
-
-
-
-
-
-
-    getSortedRowModel: getSortedRowModel(),
-
-
-
-
-
-
-
-  });
+  
 
 
 
@@ -3223,6 +2986,8 @@ export default function AdminDashboard() {
 
 
 
+      {activeTab === 'Leaderboard' && <LeaderboardView />}
+
       {activeTab === 'Overview' && (
 
 
@@ -3409,6 +3174,8 @@ export default function AdminDashboard() {
 
           </header>
 
+          <AICopilot data={data} leaderboard={leaderboard} />
+
 
 
 
@@ -3535,119 +3302,7 @@ export default function AdminDashboard() {
 
 
 
-            <article id="risk-radar" className="panel">
-
-
-
-
-
-
-
-              <div className="mb-4 flex items-center justify-between">
-
-
-
-
-
-
-
-                <div>
-
-
-
-
-
-
-
-                  <p className="text-lg font-semibold text-foreground">Risk Segmentation</p>
-
-
-
-
-
-
-
-                  <p className="text-sm text-muted-foreground">Strategic grouping of the cohort by risk status.</p>
-
-
-
-
-
-
-
-                </div>
-
-
-
-
-
-
-
-                <ShieldAlert size={18} className="text-primary" />
-
-
-
-
-
-
-
-              </div>
-
-
-
-
-
-
-
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-
-
-
-
-
-
-
-                <Metric label="Critical" value={String(data?.risk_summary.critical ?? 0)} hint="Immediate action." />
-
-
-
-
-
-
-
-                <Metric label="High" value={String(data?.risk_summary.high ?? 0)} hint="Escalation pending." />
-
-
-
-
-
-
-
-                <Metric label="Moderate" value={String(data?.risk_summary.moderate ?? 0)} hint="Monitor closely." />
-
-
-
-
-
-
-
-                <Metric label="Low" value={String(data?.risk_summary.low ?? 0)} hint="Stable monitoring." />
-
-
-
-
-
-
-
-              </div>
-
-
-
-
-
-
-
-            </article>
+            
 
 
 
@@ -4495,7 +4150,8 @@ export default function AdminDashboard() {
 
 
 
-          <section className="panel">
+          {/* Faculty impact anchor for sidebar */}
+          <section id="faculty-impact" className="panel">
 
 
 
@@ -4776,109 +4432,20 @@ export default function AdminDashboard() {
 
 
                 <BarChart data={data?.bottlenecks || []}>
-
-
-
-
-
-
-
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" vertical={false} />
-
-
-
-
-
-
-
                   <XAxis 
-
-
-
-
-
-
-
                     dataKey="subject_name" 
-
-
-
-
-
-
-
-                    interval={0} 
-
-
-
-
-
-
-
-                    angle={-15} 
-
-
-
-
-
-
-
+                    interval="preserveStartEnd" 
+                    angle={-45} 
                     textAnchor="end" 
-
-
-
-
-
-
-
-                    height={60}
-
-
-
-
-
-
-
-                    tick={{ fontSize: 10 }}
-
-
-
-
-
-
-
+                    height={120} 
+                    tick={{ fontSize: 10 }} 
+                    minTickGap={2} 
+                    tickFormatter={(value) => value.length > 25 ? `${value.substring(0, 22)}...` : value} 
                   />
-
-
-
-
-
-
-
                   <YAxis />
-
-
-
-
-
-
-
                   <Tooltip />
-
-
-
-
-
-
-
                   <Bar dataKey="failure_rate" fill="var(--chart-3)" radius={[8, 8, 0, 0]} />
-
-
-
-
-
-
-
                 </BarChart>
 
 
@@ -4967,7 +4534,7 @@ export default function AdminDashboard() {
 
 
 
-              <div className="flex gap-2">
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
 
 
 
@@ -4975,7 +4542,7 @@ export default function AdminDashboard() {
 
 
 
-                <select className="input-field !py-2" value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)}>
+                <select className="input-field w-full !py-2 sm:w-40" value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)}>
 
 
 
@@ -5007,7 +4574,7 @@ export default function AdminDashboard() {
 
 
 
-                <select className="input-field !py-2" value={selectedSubjectCode} onChange={(e) => setSelectedSubjectCode(e.target.value)}>
+                <select className="input-field w-full !py-2 sm:w-72" value={selectedSubjectCode} onChange={(e) => setSelectedSubjectCode(e.target.value)}>
 
 
 
@@ -5127,7 +4694,12 @@ export default function AdminDashboard() {
 
 
 
-                          <p className="text-sm font-semibold">{e.student_name}</p>
+                          <div className="flex items-center gap-2">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                              {e.class_rank}
+                            </span>
+                            <p className="text-sm font-semibold">{e.student_name}</p>
+                          </div>
 
 
 
@@ -6767,206 +6339,6 @@ export default function AdminDashboard() {
 
 
 
-      {activeTab === 'Attendance' && (
-
-
-
-
-
-
-
-        <div className="space-y-6">
-
-
-
-
-
-
-
-          <article className="panel">
-
-
-
-
-
-
-
-            <div className="mb-6">
-
-
-
-
-
-
-
-              <p className="text-lg font-semibold text-foreground">Attendance Insight</p>
-
-
-
-
-
-
-
-              <p className="text-sm text-muted-foreground">Department-wide attendance tracking and defaulter analysis.</p>
-
-
-
-
-
-
-
-            </div>
-
-
-
-
-
-
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-
-
-
-
-
-
-
-              <Metric label="Avg Attendance" value={Number(data?.department_health?.average_attendance || 0).toFixed(1) + '%'} hint="Rollup across all batches" />
-
-
-
-
-
-
-
-              <Metric label="Defaulters" value={String(data?.attendance_defaulters?.length || 0)} hint="Students below 75%" />
-
-
-
-
-
-
-
-              <Metric label="Peak Absences" value="Mon-Fri" hint="Historical peak window" />
-
-
-
-
-
-
-
-              <Metric label="Stability" value="92%" hint="Trend consistency" />
-
-
-
-
-
-
-
-            </div>
-
-
-
-
-
-
-
-            <div className="space-y-4">
-
-
-
-
-
-
-
-              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Sub-75% Defaulter Review</p>
-
-
-
-
-
-
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-
-
-
-
-
-
-
-                {data?.attendance_defaulters?.map(item => (
-
-
-
-
-
-
-
-                  <StudentStrip key={item.roll_no} item={item} onOpen={setSelectedRollNo} />
-
-
-
-
-
-
-
-                ))}
-
-
-
-
-
-
-
-              </div>
-
-
-
-
-
-
-
-            </div>
-
-
-
-
-
-
-
-          </article>
-
-
-
-
-
-
-
-        </div>
-
-
-
-
-
-
-
-      )}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
       {activeTab === 'Security' && (
 
 
@@ -7287,461 +6659,13 @@ export default function AdminDashboard() {
 
 
 
-      {activeTab === 'Placements' && (
-
-
-
-
-
-
-
-        <div className="space-y-6">
-
-
-
-
-
-
-
-          <article className="panel">
-
-
-
-
-
-
-
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-
-
-
-
-
-
-
-              <div>
-
-
-
-
-
-
-
-                <p className="text-lg font-semibold text-foreground">Placement Readiness Engine</p>
-
-
-
-
-
-
-
-                <p className="text-sm text-muted-foreground">Detailed candidate mapping for upcoming drives.</p>
-
-
-
-
-
-
-
-              </div>
-
-
-
-
-
-
-
-              <input
-
-
-
-
-
-
-
-                value={placementSearch}
-
-
-
-
-
-
-
-                onChange={(e) => setPlacementSearch(e.target.value)}
-
-
-
-
-
-
-
-                className="input-field !py-2 !w-64"
-
-
-
-
-
-
-
-                placeholder="Filter candidates..."
-
-
-
-
-
-
-
-              />
-
-
-
-
-
-
-
-            </div>
-
-
-
-
-
-
-
-            <div className="overflow-x-auto rounded-2xl border border-border/60">
-
-
-
-
-
-
-
-              <table className="w-full text-sm">
-
-
-
-
-
-
-
-                <thead className="bg-muted/40 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-
-
-
-
-
-
-
-                  <tr>
-
-
-
-
-
-
-
-                    <th className="px-4 py-3 text-left">Candidate</th>
-
-
-
-
-
-
-
-                    <th className="px-4 py-3 text-left">CGPA</th>
-
-
-
-
-
-
-
-                    <th className="px-4 py-3 text-left">Coding</th>
-
-
-
-
-
-
-
-                    <th className="px-4 py-3 text-left">Status</th>
-
-
-
-
-
-
-
-                    <th className="px-4 py-3 text-left">Risk</th>
-
-
-
-
-
-
-
-                  </tr>
-
-
-
-
-
-
-
-                </thead>
-
-
-
-
-
-
-
-                <tbody>
-
-
-
-
-
-
-
-                  {table.getRowModel().rows.map(row => {
-
-
-
-
-
-
-
-                    const d = row.original as any;
-
-
-
-
-
-
-
-                    return (
-
-
-
-
-
-
-
-                      <tr key={row.id} className="border-t border-border/40 hover:bg-muted/30 transition-colors">
-
-
-
-
-
-
-
-                        <td className="px-4 py-4">
-
-
-
-
-
-
-
-                          <button onClick={() => setSelectedRollNo(d.roll_no)} className="text-left group">
-
-
-
-
-
-
-
-                            <p className="font-semibold group-hover:text-primary">{d.student_name || d.name}</p>
-
-
-
-
-
-
-
-                            <p className="text-[10px] text-muted-foreground">{d.roll_no} | {d.batch}</p>
-
-
-
-
-
-
-
-                          </button>
-
-
-
-
-
-
-
-                        </td>
-
-
-
-
-
-
-
-                        <td className="px-4 py-4 font-bold">{d.cgpa}</td>
-
-
-
-
-
-
-
-                        <td className="px-4 py-4 text-muted-foreground">{d.coding_score}</td>
-
-
-
-
-
-
-
-                        <td className="px-4 py-4">
-
-
-
-
-
-
-
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest ${d.status === 'Ready' || d.placement_ready ? 'bg-emerald-500/12 text-emerald-600' : 'bg-amber-500/12 text-amber-600'}`}>
-
-
-
-
-
-
-
-                            {d.status || (d.placement_ready ? 'Ready' : 'In Progress')}
-
-
-
-
-
-
-
-                          </span>
-
-
-
-
-
-
-
-                        </td>
-
-
-
-
-
-
-
-                        <td className="px-4 py-4">
-
-
-
-
-
-
-
-                          <span className={`risk-badge risk-${(d.risk_level || 'low').toLowerCase()}`}>{d.risk_level || 'Low'}</span>
-
-
-
-
-
-
-
-                        </td>
-
-
-
-
-
-
-
-                      </tr>
-
-
-
-
-
-
-
-                    );
-
-
-
-
-
-
-
-                  })}
-
-
-
-
-
-
-
-                </tbody>
-
-
-
-
-
-
-
-              </table>
-
-
-
-
-
-
-
-            </div>
-
-
-
-
-
-
-
-          </article>
-
-
-
-
-
-
-
-        </div>
-
-
-
-
-
-
-
+      {activeTab === 'Risk' && (
+        <RiskRadarView onOpenStudentProfile={setSelectedRollNo} />
       )}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+      {activeTab === 'Placements' && (
+        <PlacementView onOpenStudentProfile={setSelectedRollNo} />
+      )}
 
       {activeTab === 'Staff' && (
 

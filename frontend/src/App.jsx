@@ -15,6 +15,7 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const StaffDashboard = lazy(() => import('./pages/StaffDashboard'));
 
 import ConsentScreen from './components/ConsentScreen';
+import { ROLES, getDefaultRouteForRole } from './routes/config';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,14 +31,9 @@ function App() {
   const { user, logout, hasConsented, setConsent } = useAuthStore();
   const { theme } = useThemeStore();
   const isAuthenticated = !!user;
-  const isAdmin = user?.role === 'admin' || user?.role?.name === 'admin';
-  const isStaff = user?.role === 'staff' || user?.role?.name === 'staff';
+  const userRole = (user?.role?.name || user?.role || 'student').toLowerCase();
 
-  const getRedirectPath = () => {
-    if (isAdmin) return '/admin';
-    if (isStaff) return '/staff';
-    return '/dashboard';
-  };
+  const getRedirectPath = () => getDefaultRouteForRole(userRole);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -65,7 +61,7 @@ function App() {
                 <Route
                   path="/dashboard"
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
                       <DashboardLayout>
                         <Dashboard />
                       </DashboardLayout>
@@ -76,7 +72,7 @@ function App() {
                 <Route
                   path="/admin"
                   element={
-                    <ProtectedRoute adminOnly>
+                    <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
                       <DashboardLayout>
                         <AdminDashboard />
                       </DashboardLayout>
@@ -87,7 +83,7 @@ function App() {
                 <Route
                   path="/staff"
                   element={
-                    <ProtectedRoute staffOnly>
+                    <ProtectedRoute allowedRoles={[ROLES.STAFF]}>
                       <DashboardLayout>
                         <StaffDashboard />
                       </DashboardLayout>

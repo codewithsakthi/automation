@@ -14,7 +14,7 @@ from ..core import auth
 from .. import models
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-SCRIPT_PATH = PROJECT_ROOT / 'script.py' 
+SCRIPT_PATH = PROJECT_ROOT / 'pipeline' / 'script.py'
 DATA_DIR = PROJECT_ROOT / 'data'
 
 

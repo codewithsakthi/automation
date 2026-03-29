@@ -35,6 +35,37 @@ const NavItem = ({ icon: Icon, label, href, isActive }: NavItemProps) => {
       e.preventDefault();
       const params = new URLSearchParams(href);
       setSearchParams(params);
+    } else if (href.startsWith('#')) {
+      e.preventDefault();
+      
+      const currentTab = searchParams.get('tab') || 'Overview';
+      
+      const scrollToHash = () => {
+        const element = document.getElementById(href.substring(1));
+        const mainScroll = document.getElementById('main-scroll');
+        if (element && mainScroll) {
+          const containerTop = mainScroll.getBoundingClientRect().top;
+          const elementTop = element.getBoundingClientRect().top;
+          const topOffset = elementTop - containerTop + mainScroll.scrollTop - 60;
+          
+          mainScroll.scrollTo({
+            top: topOffset > 0 ? topOffset : 0,
+            behavior: 'smooth'
+          });
+        }
+      };
+
+      if (currentTab !== 'Overview') {
+        const params = new URLSearchParams(searchParams);
+        params.set('tab', 'Overview');
+        setSearchParams(params);
+        
+        setTimeout(scrollToHash, 200);
+      } else {
+        scrollToHash();
+      }
+      
+      window.history.pushState(null, '', window.location.pathname + window.location.search + href);
     }
   };
 
@@ -103,14 +134,14 @@ export default function Sidebar({ role = 'student', width, onResizeStart, isResi
             <>
               <NavGroup title="Overview">
                 <NavItem icon={LayoutDashboard} label="Command Center" href="?tab=Overview" isActive={activeTab === 'Overview'} />
-                <NavItem icon={ShieldAlert} label="Risk Radar" href="#risk-radar" />
-                <NavItem icon={Target} label="Placement Pipeline" href="#placement-pipeline" />
+                <NavItem icon={ShieldAlert} label="Risk Radar" href="?tab=Risk" isActive={activeTab === 'Risk'} />
+                <NavItem icon={Target} label="Placement Pipeline" href="?tab=Placements" isActive={activeTab === 'Placements'} />
               </NavGroup>
 
               <NavGroup title="Analytics">
                 <NavItem icon={Zap} label="Subject Analytics" href="?tab=Performance" isActive={activeTab === 'Performance'} />
-                <NavItem icon={CalendarCheck} label="Attendance Insight" href="?tab=Attendance" isActive={activeTab === 'Attendance'} />
-                <NavItem icon={Trophy} label="Leaderboard" href="#leaderboard" />
+                <NavItem icon={CalendarCheck} label="Attendance Alarms" href="?tab=Risk" isActive={activeTab === 'Risk'} />
+                <NavItem icon={Trophy} label="Leaderboard" href="?tab=Leaderboard" isActive={activeTab === 'Leaderboard'} />
                 <NavItem icon={Layers} label="Faculty Impact" href="#faculty-impact" />
               </NavGroup>
 
@@ -123,25 +154,25 @@ export default function Sidebar({ role = 'student', width, onResizeStart, isResi
           ) : role === 'staff' ? (
             <>
               <NavGroup title="Portal">
-                <NavItem icon={LayoutDashboard} label="Faculty Hub" href="/staff?tab=Overview" isActive={activeTab === 'Overview'} />
-                <NavItem icon={CalendarCheck} label="Mark Attendance" href="/staff?tab=Attendance" isActive={activeTab === 'Attendance'} />
-                <NavItem icon={Activity} label="Weekly Schedule" href="/staff?tab=Schedule" isActive={activeTab === 'Schedule'} />
+                <NavItem icon={LayoutDashboard} label="Faculty Hub" href="?tab=Overview" isActive={activeTab === 'Overview'} />
+                <NavItem icon={CalendarCheck} label="Mark Attendance" href="?tab=Attendance" isActive={activeTab === 'Attendance'} />
+                <NavItem icon={Activity} label="Weekly Schedule" href="?tab=Schedule" isActive={activeTab === 'Schedule'} />
               </NavGroup>
               <NavGroup title="Analytics">
-                <NavItem icon={BarChart2} label="Subject Performance" href="/staff?tab=Overview" />
-                <NavItem icon={Users} label="Student Insights" href="/staff?tab=Overview" />
+                <NavItem icon={BarChart2} label="Subject Performance" href="?tab=Performance" isActive={activeTab === 'Performance'} />
+                <NavItem icon={Users} label="Student Insights" href="?tab=Insights" isActive={activeTab === 'Insights'} />
               </NavGroup>
             </>
           ) : (
             <>
               <NavGroup title="Academic">
-                <NavItem icon={LayoutDashboard} label="Overview" href="/dashboard?tab=Overview" isActive={activeTab === 'Overview'} />
-                <NavItem icon={Zap} label="Performance" href="/dashboard?tab=Performance" isActive={activeTab === 'Performance'} />
-                <NavItem icon={CalendarCheck} label="Attendance" href="/dashboard?tab=Attendance" isActive={activeTab === 'Attendance'} />
+                <NavItem icon={LayoutDashboard} label="Overview" href="?tab=Overview" isActive={activeTab === 'Overview'} />
+                <NavItem icon={Zap} label="Performance" href="?tab=Performance" isActive={activeTab === 'Performance'} />
+                <NavItem icon={CalendarCheck} label="Attendance" href="?tab=Attendance" isActive={activeTab === 'Attendance'} />
               </NavGroup>
               <NavGroup title="Personal">
-                <NavItem icon={User} label="My Profile" href="/dashboard?tab=Profile" isActive={activeTab === 'Profile'} />
-                <NavItem icon={Lock} label="Security" href="/dashboard?tab=Security" isActive={activeTab === 'Security'} />
+                <NavItem icon={User} label="My Profile" href="?tab=Profile" isActive={activeTab === 'Profile'} />
+                <NavItem icon={Lock} label="Security" href="?tab=Security" isActive={activeTab === 'Security'} />
               </NavGroup>
             </>
           )}

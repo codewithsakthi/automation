@@ -18,6 +18,8 @@ import api from '../api/client';
 import MarksEntry from '../components/MarksEntry';
 import AttendancePanel from '../components/AttendancePanel';
 import SchedulePanel from '../components/SchedulePanel';
+import StaffPerformancePanel from '../components/StaffPerformancePanel';
+import StaffInsightsPanel from '../components/StaffInsightsPanel';
 
 const StatCard = ({ label, value, hint, icon: Icon, trend }) => (
   <div className="metric-card group overflow-hidden relative">
@@ -56,14 +58,22 @@ const SubjectCard = ({ subject, onManageMarks }) => (
     <h3 className="text-lg font-bold text-foreground mb-1">{subject.subject_name}</h3>
     <p className="text-sm text-muted-foreground font-mono mb-6">{subject.course_code}</p>
     
-    <div className="grid grid-cols-2 gap-4 mb-6">
-      <div className="p-3 rounded-2xl border border-border/40 bg-muted/20">
-        <p className="text-xs text-muted-foreground font-semibold mb-1 uppercase tracking-tight">Students</p>
-        <p className="text-xl font-bold">{subject.student_count}</p>
+    <div className="grid grid-cols-4 gap-2 mb-6">
+      <div className="p-2 rounded-xl border border-border/40 bg-muted/20 text-center">
+        <p className="text-[10px] text-muted-foreground font-semibold mb-1 uppercase tracking-tight">Students</p>
+        <p className="text-lg font-bold">{subject.student_count}</p>
       </div>
-      <div className="p-3 rounded-2xl border border-border/40 bg-muted/20">
-        <p className="text-xs text-muted-foreground font-semibold mb-1 uppercase tracking-tight">Section</p>
-        <p className="text-xl font-bold">{subject.section || 'A'}</p>
+      <div className="p-2 rounded-xl border border-border/40 bg-muted/20 text-center">
+        <p className="text-[10px] text-muted-foreground font-semibold mb-1 uppercase tracking-tight">Pass Rate</p>
+        <p className="text-lg font-bold">{subject.pass_percentage}%</p>
+      </div>
+      <div className="p-2 rounded-xl border border-border/40 bg-muted/20 text-center">
+        <p className="text-[10px] text-muted-foreground font-semibold mb-1 uppercase tracking-tight">Avg Marks</p>
+        <p className="text-lg font-bold">{subject.average_marks}</p>
+      </div>
+      <div className="p-2 rounded-xl border border-border/40 bg-muted/20 text-center">
+        <p className="text-[10px] text-muted-foreground font-semibold mb-1 uppercase tracking-tight">Attendance</p>
+        <p className="text-lg font-bold">{subject.average_attendance}%</p>
       </div>
     </div>
     
@@ -141,7 +151,9 @@ export default function StaffDashboard() {
           {[
             { id: 'Overview', label: 'Overview', icon: TrendingUp },
             { id: 'Attendance', label: 'Attendance', icon: Users },
-            { id: 'Schedule', label: 'Schedule', icon: Calendar }
+            { id: 'Schedule', label: 'Schedule', icon: Calendar },
+            { id: 'Performance', label: 'Performance', icon: BookOpen },
+            { id: 'Insights', label: 'Insights', icon: Users }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -176,15 +188,14 @@ export default function StaffDashboard() {
             />
             <StatCard 
               label="Avg Performance" 
-              value="84%" 
-              hint="Batch pass rate" 
+              value={`${staff?.average_performance || 0}%`} 
+              hint="Batch avg score" 
               icon={TrendingUp} 
-              trend={12}
             />
             <StatCard 
               label="Pending Marks" 
-              value="3" 
-              hint="Subjects needing entry" 
+              value={staff?.pending_marks_count || 0} 
+              hint="Students needing entry" 
               icon={FileText} 
             />
           </section>
@@ -225,10 +236,24 @@ export default function StaffDashboard() {
                 <CheckCircle size={18} className="text-emerald-500" />
               </div>
               <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-muted/30 border border-border/40">
-                  <p className="text-sm font-semibold">No recent updates</p>
-                  <p className="text-xs text-muted-foreground mt-1">System is waiting for assessment cycle data.</p>
-                </div>
+                {staff?.recent_marks_updates?.length > 0 ? (
+                  staff.recent_marks_updates.map((update, idx) => (
+                    <div key={idx} className="p-3 rounded-2xl border border-border/40 hover:bg-muted/30 transition-colors group">
+                      <div className="flex justify-between items-start mb-1">
+                        <p className="text-sm font-semibold group-hover:text-primary">{update.subject_name}</p>
+                        <span className="text-xs text-muted-foreground">{new Date(update.updated_at).toLocaleDateString()}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {update.action} for <span className="font-semibold text-foreground">{update.student_name}</span> ({update.roll_no})
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 rounded-2xl bg-muted/30 border border-border/40">
+                    <p className="text-sm font-semibold">No recent updates</p>
+                    <p className="text-xs text-muted-foreground mt-1">System is waiting for assessment cycle data.</p>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -255,6 +280,14 @@ export default function StaffDashboard() {
 
       {activeTab === 'Schedule' && (
         <SchedulePanel />
+      )}
+
+      {activeTab === 'Performance' && (
+        <StaffPerformancePanel />
+      )}
+
+      {activeTab === 'Insights' && (
+        <StaffInsightsPanel />
       )}
 
       {selectedSubject && (

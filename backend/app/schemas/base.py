@@ -165,6 +165,14 @@ class StudentMarkResponse(BaseModel):
     grade: Optional[str] = None
     result_status: Optional[str] = None
 
+class StaffAttendanceCreate(BaseModel):
+    subject_id: int
+    date: date
+    hour: int = Field(ge=1, le=7)
+    absentees: List[str] = Field(default_factory=list)
+    section: str = "A"
+    semester: int
+
 class AttendanceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     date: date
@@ -1037,6 +1045,9 @@ class StaffSubject(BaseModel):
     section: Optional[str] = None
     academic_year: Optional[str] = None
     student_count: int = 0
+    average_marks: Optional[float] = 0.0
+    pass_percentage: Optional[float] = 0.0
+    average_attendance: Optional[float] = 0.0
 
 class StaffStudentMarkUpdate(BaseModel):
     student_id: int
@@ -1047,13 +1058,22 @@ class StaffStudentMarkUpdate(BaseModel):
     cit3_marks: Optional[float] = None
     semester_exam_marks: Optional[float] = None
 
+class RecentMarkUpdate(BaseModel):
+    subject_name: str
+    student_name: str
+    roll_no: str
+    action: str
+    updated_at: datetime
+
 class StaffDashboardResponse(BaseModel):
     staff_id: int
     name: str
     department: Optional[str] = None
     subjects: List[StaffSubject] = Field(default_factory=list)
     total_students_handled: int = 0
-    recent_marks_updates: List[dict] = Field(default_factory=list)
+    recent_marks_updates: List[RecentMarkUpdate] = Field(default_factory=list)
+    average_performance: float = 0.0
+    pending_marks_count: int = 0
 
 class StaffTimeTableEntry(BaseModel):
     model_config = ConfigDict(from_attributes=True)

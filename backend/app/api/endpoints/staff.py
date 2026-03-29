@@ -69,19 +69,87 @@ async def get_staff_dashboard(
 
     subjects = []
     total_students = 0
+    total_pending_marks = 0
+    total_performance_acc = 0.0
+    performance_count = 0
+    recent_updates = []
+
     for a in assignments:
-        # Count students in this subject/section
-        # For now, we assume students are linked to programs/semesters
-        # And assignments are also linked to subjects (which have programs/semesters)
-        # We can count students in that program/semester
-        student_count_res = await db.execute(
-            select(func.count(models.Student.id))
+        students_res = await db.execute(
+            select(models.Student)
             .filter(models.Student.program_id == a.subject.program_id)
             .filter(models.Student.current_semester == a.subject.semester)
         )
-        count = student_count_res.scalar() or 0
+        students = students_res.scalars().all()
+        count = len(students)
         total_students += count
         
+        student_ids = [s.id for s in students]
+        if not student_ids:
+            subjects.append(schemas.StaffSubject(
+                id=a.id,
+                subject_id=a.subject_id,
+                subject_name=a.subject.name,
+                course_code=a.subject.course_code,
+                semester=a.subject.semester,
+                section=a.section,
+                academic_year=a.academic_year,
+                student_count=0,
+                average_marks=0.0,
+                pass_percentage=0.0
+            ))
+            continue
+
+        marks_res = await db.execute(
+            select(models.StudentMark)
+            .filter(models.StudentMark.subject_id == a.subject_id)
+            .filter(models.StudentMark.student_id.in_(student_ids))
+        )
+        marks = marks_res.scalars().all()
+
+        passed = 0
+        total_m = 0.0
+        
+        for m in marks:
+            if m.result_status == 'Pass':
+                passed += 1
+            if m.total_marks is not None:
+                total_m += float(m.total_marks)
+                total_performance_acc += float(m.total_marks)
+                performance_count += 1
+            
+            if m.semester_exam_marks is None:
+                total_pending_marks += 1
+            
+            if m.updated_at:
+                stu_name = next((s.name for s in students if s.id == m.student_id), "Unknown")
+                stu_roll = next((s.roll_no for s in students if s.id == m.student_id), "Unknown")
+                recent_updates.append(schemas.RecentMarkUpdate(
+                    subject_name=a.subject.name,
+                    student_name=stu_name,
+                    roll_no=stu_roll,
+                    action="Updated assessment record",
+                    updated_at=m.updated_at
+                ))
+
+        total_pending_marks += (count - len(marks))
+        pass_percentage = (passed / len(marks) * 100) if marks else 0.0
+        average_marks = (total_m / len(marks)) if marks else 0.0
+
+        att_res = await db.execute(
+            select(models.Attendance)
+            .filter(models.Attendance.subject_id == a.subject_id)
+        )
+        attendance_records = att_res.scalars().all()
+        
+        total_p = 0
+        total_a = 0
+        for att in attendance_records:
+            total_p += att.total_present
+            total_a += len(att.absentee_roll_nos) if att.absentee_roll_nos else 0
+            
+        avg_attendance = (total_p / (total_p + total_a) * 100) if (total_p + total_a) > 0 else 0.0
+
         subjects.append(schemas.StaffSubject(
             id=a.id,
             subject_id=a.subject_id,
@@ -90,8 +158,15 @@ async def get_staff_dashboard(
             semester=a.subject.semester,
             section=a.section,
             academic_year=a.academic_year,
-            student_count=count
+            student_count=count,
+            average_marks=round(average_marks, 2),
+            pass_percentage=round(pass_percentage, 2),
+            average_attendance=round(avg_attendance, 2)
         ))
+
+    overall_avg = (total_performance_acc / performance_count) if performance_count > 0 else 0.0
+    recent_updates.sort(key=lambda x: x.updated_at, reverse=True)
+    top_5_updates = recent_updates[:5]
 
     return schemas.StaffDashboardResponse(
         staff_id=staff.id,
@@ -99,7 +174,9 @@ async def get_staff_dashboard(
         department=staff.department,
         subjects=subjects,
         total_students_handled=total_students,
-        recent_marks_updates=[] # TODO: Implement tracking of recent updates
+        recent_marks_updates=top_5_updates,
+        average_performance=round(overall_avg, 2),
+        pending_marks_count=total_pending_marks
     )
 
 @router.get(
@@ -223,3 +300,90 @@ async def update_marks(
 
     await db.commit()
     return schemas.MessageResponse(message="Marks updated successfully")
+
+@router.post(
+    "/attendance",
+    response_model=schemas.MessageResponse,
+    summary="Submit Attendance",
+    description="Mark attendance for a specific subject and hour. Students not in the absentees list will be marked present."
+)
+async def submit_attendance(
+    attendance_data: schemas.StaffAttendanceCreate = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.role.name != "staff":
+        raise HTTPException(status_code=403, detail="Access forbidden: Staff only")
+
+    # Verify assignment
+    assignment_res = await db.execute(
+        select(models.FacultySubjectAssignment)
+        .filter(models.FacultySubjectAssignment.faculty_id == current_user.id)
+        .filter(models.FacultySubjectAssignment.subject_id == attendance_data.subject_id)
+    )
+    if not assignment_res.scalars().first():
+        raise HTTPException(status_code=403, detail=f"Not assigned to subject ID {attendance_data.subject_id}")
+
+    # Fetch subject to get program
+    subject_res = await db.execute(select(models.Subject).filter(models.Subject.id == attendance_data.subject_id))
+    subject = subject_res.scalars().first()
+    if not subject:
+        raise HTTPException(status_code=404, detail="Subject not found")
+
+    # Fetch all students in this program/semester
+    students_res = await db.execute(
+        select(models.Student)
+        .filter(models.Student.program_id == subject.program_id)
+        .filter(models.Student.current_semester == attendance_data.semester)
+    )
+    students = students_res.scalars().all()
+
+    if not students:
+        raise HTTPException(status_code=400, detail="No students found for this subject criteria.")
+
+    absentees_set = {roll.strip().upper() for roll in attendance_data.absentees if roll.strip()}
+
+    for student in students:
+        record_res = await db.execute(
+            select(models.Attendance)
+            .filter(models.Attendance.student_id == student.id)
+            .filter(models.Attendance.date == attendance_data.date)
+        )
+        record = record_res.scalars().first()
+
+        is_absent = student.roll_no.strip().upper() in absentees_set
+
+        if record:
+            status_array = list(record.status_array)
+            while len(status_array) < 7:
+                status_array.append('P')
+                
+            status_array[attendance_data.hour - 1] = 'A' if is_absent else 'P'
+            total_present = sum(1 for status in status_array if status == 'P')
+            
+            await db.execute(
+                update(models.Attendance)
+                .where(models.Attendance.id == record.id)
+                .values(
+                    status_array=status_array,
+                    total_present=total_present
+                )
+            )
+        else:
+            status_array = ['P' for _ in range(7)]
+            status_array[attendance_data.hour - 1] = 'A' if is_absent else 'P'
+            total_present = sum(1 for status in status_array if status == 'P')
+            
+            new_record = models.Attendance(
+                student_id=student.id,
+                date=attendance_data.date,
+                hours_per_day=7,
+                status_array=status_array,
+                total_present=total_present,
+                total_hours=7,
+                semester=attendance_data.semester
+            )
+            db.add(new_record)
+
+    await db.commit()
+    return schemas.MessageResponse(message="Attendance submitted successfully")

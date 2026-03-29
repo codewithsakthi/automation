@@ -1,0 +1,20 @@
+  const [selectedSubjectCode, setSelectedSubjectCode] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState<string>('ALL');
+  const [selectedRollNo, setSelectedRollNo] = useState<string | null>(null);
+  // Scroll to anchor on activeTab changes or direct link clicks
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && activeTab === 'Overview') {
+      const element = document.getElementById(hash.substring(1));
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, [activeTab]);
+  const scrollToAnchor = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+  const [placementSearch, setPlacementSearch] = useState('');
