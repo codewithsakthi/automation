@@ -19,6 +19,7 @@ import { Activity, AlertTriangle, ArrowUp, BookOpenCheck, Download, ShieldCheck,
 import api from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import type { FullStudentRecord, Student360Profile } from '../types/enterprise';
+import AIStudentCoach from './AIStudentCoach';
 
 interface StudentProfile360Props {
   rollNo: string | null;
@@ -98,6 +99,21 @@ export default function StudentProfile360({ rollNo, onClose }: StudentProfile360
         </div>
       ) : data ? (
         <div className="mt-8 space-y-5 pb-24">
+          {/* AI Coach Panel */}
+          <section className="rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-500/5 to-sky-500/5 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-bold text-foreground">AI Coaching</p>
+                <p className="text-xs text-muted-foreground">DeepSeek-V3 — personalised academic narrative & placement coaching</p>
+              </div>
+            </div>
+            <AIStudentCoach
+              rollNo={data.roll_no || rollNo || ''}
+              studentName={data.student_name}
+              compact={false}
+            />
+          </section>
+
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <article className="panel">
               <div className="flex items-center justify-between">

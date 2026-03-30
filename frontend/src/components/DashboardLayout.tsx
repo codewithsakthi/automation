@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import ThemeToggle from './ThemeToggle';
 import MobileBottomNav from './MobileBottomNav';
 import SpotlightSearch from './SpotlightSearch';
+import AICommandBar from './AICommandBar';
 import { useThemeStore } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
 
@@ -124,6 +125,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             {/* Spotlight Search — admin only */}
             {role === 'admin' && (
               <SpotlightSearch onSelect={handleSpotlightSelect} />
+            )}
+
+            {/* AI Command Bar — admin only (Ctrl+K) */}
+            {role === 'admin' && (
+              <AICommandBar />
             )}
 
             {/* Search — desktop only */}

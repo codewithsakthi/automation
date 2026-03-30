@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from .core.limiter import limiter  # must be imported before routers
-from .api.endpoints import auth, students, admin, staff
+from .api.endpoints import auth, students, admin, staff, ai
 from .core.database import engine, Base
 from .core.database import settings
 import sentry_sdk
@@ -82,6 +82,7 @@ app.include_router(auth.router, prefix="/api/v1/auth")
 app.include_router(students.router, prefix="/api/v1/students")
 app.include_router(admin.router, prefix="/api/v1/admin")
 app.include_router(staff.router, prefix="/api/v1/staff")
+app.include_router(ai.router, prefix="/api/v1/ai")
 
 
 # Legacy redirects (compatibility for transition)
