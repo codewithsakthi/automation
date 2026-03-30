@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+﻿import React, { useMemo, useState, useEffect } from 'react';
 import LeaderboardView from '../features/admin/views/LeaderboardView';
 import PlacementView from '../features/admin/views/PlacementView';
 import RiskRadarView from '../features/admin/views/RiskRadarView';
@@ -1331,61 +1331,22 @@ export default function AdminDashboard() {
 
 
   const createStaffMutation = useMutation({
-
-
-
-
-
-
-
-    mutationFn: async (payload: any) => api.post('admin/staff', payload),
-
-
-
-
-
-
-
-    onSuccess: () => {
-
-
-
-
-
-
-
+    mutationFn: async (payload: any) => api.post("admin/staff", payload),
+    onSuccess: async (data: any) => {
+      try {
+        const newId = data?.id || data?.data?.id || data?.staff_id;
+        if (newId !== undefined) {
+          const subjectPayload = buildSubjectPayload();
+          await api.post(`admin/staff/${newId}/subjects`, subjectPayload);
+        }
+      } catch (e) {
+        console.error("Failed assigning subjects to new staff", e);
+      }
       setStaffForm({ username: '', name: '', email: '', department: '', password: '' });
-
-
-
-
-
-
-
       setEditingStaff(null);
-
-
-
-
-
-
-
+      setStaffModalOpen(false);
       refetchStaff();
-
-
-
-
-
-
-
     },
-
-
-
-
-
-
-
   });
 
 
@@ -1395,61 +1356,19 @@ export default function AdminDashboard() {
 
 
   const updateStaffMutation = useMutation({
-
-
-
-
-
-
-
     mutationFn: async ({ id, ...payload }: any) => api.patch(`admin/staff/${id}`, payload),
-
-
-
-
-
-
-
-    onSuccess: () => {
-
-
-
-
-
-
-
+    onSuccess: async (_data, variables: any) => {
+      try {
+        const subjectPayload = buildSubjectPayload();
+        await api.post(`admin/staff/${variables.id}/subjects`, subjectPayload);
+      } catch (e) {
+        console.error("Failed updating staff subjects", e);
+      }
       setStaffForm({ username: '', name: '', email: '', department: '', password: '' });
-
-
-
-
-
-
-
       setEditingStaff(null);
-
-
-
-
-
-
-
+      setStaffModalOpen(false);
       refetchStaff();
-
-
-
-
-
-
-
     },
-
-
-
-
-
-
-
   });
 
 
@@ -1506,8 +1425,7 @@ export default function AdminDashboard() {
 
 
   const [selectedRollNo, setSelectedRollNo] = useState<string | null>(null);
-
-
+  
 
 
 
@@ -1701,6 +1619,54 @@ export default function AdminDashboard() {
 
 
   const [staffModalOpen, setStaffModalOpen] = useState(false);
+  const [staffSubjectKeys, setStaffSubjectKeys] = useState<string[]>([]);
+  const [staffSubjectSearch, setStaffSubjectSearch] = useState('');
+  const [staffSubjectSemFilter, setStaffSubjectSemFilter] = useState<'ALL' | number>('ALL');
+
+  const makeSubjectKey = (s: any, idx: number) =>
+    String(s?.id ?? s?.subject_code ?? s?.course_code ?? s?.code ?? `sub-${idx}`);
+
+  const buildSubjectPayload = () => {
+    const selected = (subjectCatalog || [])
+      .map((s: any, idx: number) => {
+        const key = makeSubjectKey(s, idx);
+        if (!staffSubjectKeys.includes(key)) return null;
+        return { id: s.id, code: s.subject_code || s.course_code || s.code };
+      })
+      .filter(Boolean) as { id?: number; code?: string }[];
+
+    const ids = Array.from(
+      new Set(selected.map((x) => x.id).filter((id): id is number => id !== undefined && id !== null))
+    );
+    const codes = Array.from(new Set(selected.map((x) => x.code).filter((code): code is string => Boolean(code))));
+
+    return { subject_ids: ids, subject_codes: codes };
+  };
+
+  const handleToggleSubject = (key: string) => {
+    setStaffSubjectKeys((prev) => (prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key]));
+  };
+
+  useEffect(() => {
+    if (staffModalOpen && editingStaff) {
+      api
+        .get(`admin/staff/${editingStaff.id}/subjects`)
+        .then((data: any) => {
+          const payload = data?.data ?? data;
+          const ids = (payload?.subject_ids ?? payload ?? []) as any[];
+          const codes = (payload?.subject_codes ?? []) as any[];
+          const keys = [
+            ...codes.map((c) => String(c)),
+            ...ids.map((id) => String(id)),
+          ];
+          setStaffSubjectKeys(Array.from(new Set(keys)));
+        })
+        .catch(() => setStaffSubjectKeys([]));
+    } else if (staffModalOpen && !editingStaff) {
+      setStaffSubjectKeys([]);
+    }
+  }, [staffModalOpen, editingStaff]);
+
 
 
 
@@ -2278,7 +2244,7 @@ export default function AdminDashboard() {
 
 
 
-  // Subject catalog comes from the command-center bundle — no separate request needed
+  // Subject catalog comes from the command-center bundle Ã¢â‚¬â€ no separate request needed
 
 
 
@@ -2578,7 +2544,7 @@ export default function AdminDashboard() {
 
 
 
-  // grade letter → 0-100 score (matches backend GRADE_POINT_CASE * 10)
+  // grade letter Ã¢â€ â€™ 0-100 score (matches backend GRADE_POINT_CASE * 10)
 
 
 
@@ -4731,7 +4697,7 @@ export default function AdminDashboard() {
 
 
 
-                          {value > 0 ? value : '—'}{' '}
+                          {value > 0 ? value : 'Ã¢â‚¬â€'}{' '}
 
 
 
@@ -5603,7 +5569,7 @@ export default function AdminDashboard() {
 
 
 
-                            <span className="text-primary">{studentSortDir === 'asc' ? '↑' : '↓'}</span>
+                            <span className="text-primary">{studentSortDir === 'asc' ? 'Ã¢â€ â€˜' : 'Ã¢â€ â€œ'}</span>
 
 
 
@@ -6035,7 +6001,7 @@ export default function AdminDashboard() {
 
 
 
-                    <p className="text-xs text-muted-foreground">{item.roll_no}{item.reg_no ? ` / Reg: ${item.reg_no}` : ''} � Sem {item.current_semester} � <span className="rounded-full bg-muted px-1.5 py-0.5">{item.batch}</span> � Sec {item.section || '-'}</p>
+                    <p className="text-xs text-muted-foreground">{item.roll_no}{item.reg_no ? ` / Reg: ${item.reg_no}` : ''} Ã¯Â¿Â½ Sem {item.current_semester} Ã¯Â¿Â½ <span className="rounded-full bg-muted px-1.5 py-0.5">{item.batch}</span> Ã¯Â¿Â½ Sec {item.section || '-'}</p>
 
 
 
@@ -6769,7 +6735,7 @@ export default function AdminDashboard() {
 
                             <div>
 
-                              <p className="font-semibold text-foreground">{s.name || '�'}</p>
+                              <p className="font-semibold text-foreground">{s.name || 'Ã¯Â¿Â½'}</p>
 
                               <p className="text-[11px] text-muted-foreground">ID: {s.id}</p>
 
@@ -6990,16 +6956,76 @@ export default function AdminDashboard() {
                     type="password"
                     className="input-field w-full"
                     value={staffForm.password}
-                    onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
-                    placeholder={editingStaff ? 'Leave blank to keep' : 'Set initial password'}
-                  />
-                </div>
-              </div>
+                onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
+                placeholder={editingStaff ? 'Leave blank to keep' : 'Set initial password'}
+              />
             </div>
+          </div>
 
-            <div className="flex justify-end gap-2">
-              <button
-                className="tab-chip"
+          <div className="space-y-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Subjects</p>
+            <p className="text-[11px] text-muted-foreground">Select subjects to assign to this staff member.</p>
+            <div className="flex flex-wrap gap-2">
+              <input
+                className="input-field w-full sm:w-64 text-xs"
+                placeholder="Search subject code or name"
+                value={staffSubjectSearch}
+                onChange={(e) => setStaffSubjectSearch(e.target.value)}
+              />
+              <select
+                className="input-field w-32 text-xs"
+                value={staffSubjectSemFilter === 'ALL' ? 'ALL' : String(staffSubjectSemFilter)}
+                onChange={(e) =>
+                  setStaffSubjectSemFilter(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))
+                }
+              >
+                <option value="ALL">All Sem</option>
+                {Array.from(new Set((subjectCatalog || []).map((s: any) => s.semester).filter(Boolean))).sort(
+                  (a, b) => Number(a) - Number(b)
+                ).map((sem) => (
+                  <option key={sem} value={String(sem)}>
+                    Sem {sem}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="max-h-40 overflow-y-auto custom-scrollbar rounded-xl border border-border/50 p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {(subjectCatalog || [])
+                .filter((s: any) => {
+                  const term = staffSubjectSearch.trim().toLowerCase();
+                  const semOk =
+                    staffSubjectSemFilter === 'ALL' ||
+                    String(s.semester || '') === String(staffSubjectSemFilter);
+                  const text = `${s.subject_code || s.course_code || s.code || ''} ${s.subject_name || s.name || ''}`.toLowerCase();
+                  return semOk && (!term || text.includes(term));
+                })
+                .map((s, idx) => {
+                  const subKey = makeSubjectKey(s, idx);
+                  return (
+                    <label key={subKey} className="flex items-start gap-2 text-xs cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={staffSubjectKeys.includes(subKey)}
+                        onChange={() => handleToggleSubject(subKey)}
+                      />
+                      <span className="leading-5">
+                        <span className="font-semibold text-foreground">{s.subject_code || s.course_code || s.code}</span> — {s.subject_name || s.name}
+                        {s.semester ? <span className="text-muted-foreground"> (Sem {s.semester})</span> : null}
+                      </span>
+                    </label>
+                  );
+                })}
+              {(subjectCatalog || []).length === 0 && (
+                <p className="text-xs text-muted-foreground">Subject catalog not loaded.</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <button
+            className="tab-chip"
                 onClick={() => {
                   setStaffModalOpen(false);
                   setEditingStaff(null);
@@ -7060,7 +7086,7 @@ export default function AdminDashboard() {
 
               >
 
-                {deleteStaffMutation.isPending ? 'Deleting…' : 'Delete'}
+                {deleteStaffMutation.isPending ? 'DeletingÃ¢â‚¬Â¦' : 'Delete'}
 
               </button>
 
@@ -7093,7 +7119,6 @@ export default function AdminDashboard() {
 
 
 }
-
 
 
 

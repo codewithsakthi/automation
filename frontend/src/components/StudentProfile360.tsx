@@ -48,6 +48,7 @@ function downloadWithToken(path: string, filename: string) {
 
 export default function StudentProfile360({ rollNo, onClose }: StudentProfile360Props) {
   const drawerRef = React.useRef<HTMLElement | null>(null);
+  const [semesterFilter, setSemesterFilter] = React.useState<string>('all');
   const { data, isLoading } = useQuery<Student360Profile>({
     queryKey: ['student-360', rollNo],
     queryFn: () => api.get(`admin/student-360/${rollNo}`),
@@ -60,10 +61,19 @@ export default function StudentProfile360({ rollNo, onClose }: StudentProfile360
     staleTime: 60_000,
   });
 
+  const allSemGrades = record?.semester_grades || [];
+  const semesterOptions = Array.from(new Set(allSemGrades.map((g) => g.semester).filter(Boolean))).sort(
+    (a, b) => Number(a) - Number(b)
+  );
+  const filteredGrades =
+    semesterFilter === 'all'
+      ? allSemGrades
+      : allSemGrades.filter((g) => String(g.semester) === semesterFilter);
+
   if (!rollNo) return null;
 
   return (
-    <aside ref={drawerRef} className="fixed inset-y-0 right-0 z-50 w-full max-w-3xl overflow-y-auto border-l border-border/70 bg-[var(--panel-strong)] p-6 shadow-[0_0_40px_rgba(2,6,23,0.25)]">
+    <aside ref={drawerRef} className="fixed inset-y-0 right-0 z-50 w-full max-w-4xl overflow-y-auto border-l border-border/70 bg-[var(--panel-strong)] p-6 shadow-[0_0_40px_rgba(2,6,23,0.25)]">
       <button
         type="button"
         onClick={() => drawerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -256,35 +266,120 @@ export default function StudentProfile360({ rollNo, onClose }: StudentProfile360
               </div>
             </article>
 
-            <article className="panel">
+            <article className="panel xl:col-span-2">
               <div className="mb-4">
-                <p className="text-lg font-semibold text-foreground">Recent Grade Ledger</p>
-                <p className="text-sm text-muted-foreground">Latest subject-level performance with internals and attempts.</p>
-              </div>
-              <div className="space-y-3">
-                {(record?.semester_grades || []).slice(0, 8).map((grade, index) => (
-                  <div key={`${grade.subject_code || 'subject'}-${grade.semester || 'sem'}-${index}`} className="row-card">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{grade.subject_title || grade.subject_code || 'Subject pending'}</p>
-                      <p className="text-xs text-muted-foreground">{grade.subject_code || 'No code'} | Sem {grade.semester || '-'}</p>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3 text-right text-xs">
-                      <div>
-                        <p className="font-black text-foreground">{grade.marks ?? '-'}</p>
-                        <p className="text-muted-foreground">Marks</p>
-                      </div>
-                      <div>
-                        <p className="font-black text-foreground">{grade.internal_marks ?? '-'}</p>
-                        <p className="text-muted-foreground">Internal</p>
-                      </div>
-                      <div>
-                        <p className="font-black text-foreground">{grade.grade || '-'}</p>
-                        <p className="text-muted-foreground">Grade</p>
-                      </div>
-                    </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-lg font-semibold text-foreground">Grade Ledger</p>
+                    <p className="text-sm text-muted-foreground">Filter by semester to view exam marks, internal (CIT) components, and grades.</p>
                   </div>
-                ))}
-                {!record?.semester_grades?.length ? <div className="empty-card text-sm text-muted-foreground">Semester grade history is not available for this student yet.</div> : null}
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-muted-foreground" htmlFor="semester-filter">
+                      Semester
+                    </label>
+                    <select
+                      id="semester-filter"
+                      value={semesterFilter}
+                      onChange={(e) => setSemesterFilter(e.target.value)}
+                      className="rounded-lg border border-border/60 bg-card px-2 py-1 text-xs text-foreground"
+                    >
+                      <option value="all">All</option>
+                      {semesterOptions.map((sem) => (
+                        <option key={sem} value={String(sem)}>
+                          Sem {sem}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <div className="rounded-2xl border border-border/60 bg-card/70">
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-border/60">
+                    <p className="text-sm font-semibold text-foreground">Semester Grades</p>
+                    <span className="text-[11px] text-muted-foreground">{filteredGrades.length} rows</span>
+                  </div>
+                  <div className="max-h-[28rem] overflow-auto custom-scrollbar">
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-muted/40 text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Subject</th>
+                          <th className="px-3 py-2 text-left">Sem</th>
+                          <th className="px-3 py-2 text-right">Internal</th>
+                          <th className="px-3 py-2 text-right">Exam</th>
+                          <th className="px-3 py-2 text-right">Grade</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredGrades.map((grade, idx) => (
+                          <tr key={`${grade.subject_code || 'subject'}-${grade.semester || 'sem'}-${idx}`} className="border-b border-border/40">
+                            <td className="px-3 py-2">
+                              <p className="font-semibold text-foreground">{grade.subject_title || grade.subject_code || 'Subject pending'}</p>
+                              <p className="text-[11px] text-muted-foreground">{grade.subject_code || 'No code'}</p>
+                            </td>
+                            <td className="px-3 py-2 text-sm text-muted-foreground">{grade.semester ?? '-'}</td>
+                            <td className="px-3 py-2 text-right text-foreground">{grade.internal_marks ?? '-'}</td>
+                            <td className="px-3 py-2 text-right text-foreground">{grade.marks ?? '-'}</td>
+                            <td className="px-3 py-2 text-right text-foreground">{grade.grade || '-'}</td>
+                          </tr>
+                        ))}
+                        {!filteredGrades.length && (
+                          <tr>
+                            <td colSpan={5} className="px-3 py-3 text-center text-muted-foreground">
+                              {semesterFilter === 'all'
+                                ? 'Grade history is not available for this student yet.'
+                                : `No grades recorded for Semester ${semesterFilter}.`}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-border/60 bg-card/70">
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-border/60">
+                    <p className="text-sm font-semibold text-foreground">CIT / Internal Components</p>
+                    <span className="text-[11px] text-muted-foreground">{(record?.internal_marks || []).length} rows</span>
+                  </div>
+                  <div className="max-h-[24rem] overflow-auto custom-scrollbar">
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-muted/40 text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Subject</th>
+                          <th className="px-3 py-2 text-left">Sem</th>
+                          <th className="px-3 py-2 text-left">Test</th>
+                          <th className="px-3 py-2 text-right">Score</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(record?.internal_marks || [])
+                          .filter((m) => semesterFilter === 'all' || String(m.semester) === semesterFilter)
+                          .map((m, idx) => (
+                            <tr key={`${m.subject_code || 'subject'}-${m.semester || 'sem'}-${m.test_number || idx}`} className="border-b border-border/40">
+                              <td className="px-3 py-2">
+                                <p className="font-semibold text-foreground">{m.subject_title || m.subject_code || 'Subject pending'}</p>
+                                <p className="text-[11px] text-muted-foreground">{m.subject_code || 'No code'}</p>
+                              </td>
+                              <td className="px-3 py-2 text-sm text-muted-foreground">{m.semester ?? '-'}</td>
+                              <td className="px-3 py-2 text-sm text-muted-foreground">CIT {m.test_number ?? '-'}</td>
+                              <td className="px-3 py-2 text-right text-foreground">{m.percentage ?? '-'}</td>
+                            </tr>
+                          ))}
+                        {!((record?.internal_marks || []).filter((m) => semesterFilter === 'all' || String(m.semester) === semesterFilter).length) && (
+                          <tr>
+                            <td colSpan={4} className="px-3 py-3 text-center text-muted-foreground">
+                              {semesterFilter === 'all'
+                                ? 'No CIT/internal components recorded yet.'
+                                : `No CIT/internal components for Semester ${semesterFilter}.`}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </article>
           </section>

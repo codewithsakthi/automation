@@ -1096,6 +1096,11 @@ class StaffProfile(BaseModel):
     created_at: Optional[datetime] = None
 
 
+class StaffSubjectAssign(BaseModel):
+    subject_ids: List[int] = Field(default_factory=list, description="Subject IDs to assign to this staff member")
+    subject_codes: List[str] = Field(default_factory=list, description="Subject codes to assign (alternative to IDs)")
+
+
 class StaffCreate(BaseModel):
     username: str
     password: str

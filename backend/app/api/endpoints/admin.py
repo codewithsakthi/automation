@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core import auth
 from ...core.database import get_db, settings
-from ...core.constants import CURRICULUM_CREDITS
+from ...core.constants import CURRICULUM_CREDITS, GRADE_POINTS
+from ...services.student_service import StudentService
 from ...models import base as models
 from ...schemas import base as schemas
 from ...services.admin_service import AdminService
@@ -393,6 +394,92 @@ async def delete_staff(
     await db.commit()
     return Response(status_code=204)
 
+
+@router.get(
+    "/staff/{staff_id}/subjects",
+    response_model=schemas.StaffSubjectAssign,
+    summary="List subjects assigned to staff",
+)
+async def get_staff_subjects(
+    staff_id: int = Path(..., ge=1),
+    current_user: models.User = Depends(auth.get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin(current_user)
+    rows = await db.execute(
+        select(models.Subject.id, models.Subject.course_code)
+        .join(models.FacultySubjectAssignment, models.FacultySubjectAssignment.subject_id == models.Subject.id)
+        .where(models.FacultySubjectAssignment.faculty_id == staff_id)
+    )
+    subject_ids: list[int] = []
+    subject_codes: list[str] = []
+    for sid, code in rows.all():
+        if sid is not None:
+            subject_ids.append(int(sid))
+        if code:
+            subject_codes.append(code)
+    # Deduplicate while preserving order
+    def dedup(seq):
+        seen = set()
+        out = []
+        for item in seq:
+            if item in seen:
+                continue
+            seen.add(item)
+            out.append(item)
+        return out
+
+    return schemas.StaffSubjectAssign(subject_ids=dedup(subject_ids), subject_codes=dedup(subject_codes))
+
+
+@router.post(
+    "/staff/{staff_id}/subjects",
+    response_model=schemas.MessageResponse,
+    summary="Assign subjects to staff",
+    description="Replace the staff member's subject assignments with the provided list of subject IDs.",
+)
+async def assign_staff_subjects(
+    staff_id: int = Path(..., ge=1),
+    payload: schemas.StaffSubjectAssign = None,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin(current_user)
+    payload = payload or schemas.StaffSubjectAssign(subject_ids=[])
+
+    staff_exists = await db.scalar(
+        select(func.count()).select_from(models.Staff).filter(models.Staff.id == staff_id)
+    )
+    if not staff_exists:
+        raise HTTPException(status_code=404, detail="Staff not found")
+
+    subject_ids = list(payload.subject_ids or [])
+    if payload.subject_codes:
+        rows = await db.execute(
+            select(models.Subject.id, models.Subject.course_code).filter(models.Subject.course_code.in_(payload.subject_codes))
+        )
+        found = rows.all()
+        subject_ids.extend([r.id for r in found])
+        if len(found) != len(set(payload.subject_codes)):
+            raise HTTPException(status_code=400, detail="One or more subject codes are invalid")
+
+    if subject_ids:
+        valid_count = await db.scalar(
+            select(func.count()).select_from(models.Subject).filter(models.Subject.id.in_(subject_ids))
+        )
+        if valid_count != len(subject_ids):
+            raise HTTPException(status_code=400, detail="One or more subject IDs are invalid")
+
+    # Replace assignments
+    await db.execute(
+        delete(models.FacultySubjectAssignment).where(models.FacultySubjectAssignment.faculty_id == staff_id)
+    )
+    for sid in subject_ids:
+        db.add(models.FacultySubjectAssignment(faculty_id=staff_id, subject_id=sid))
+
+    await db.commit()
+    return schemas.MessageResponse(message="Subjects assigned successfully")
+
 @router.get(
     "/export/batch-summary",
     summary="Export Batch Summary (Excel)",
@@ -535,7 +622,70 @@ async def get_student_record(
     db: AsyncSession = Depends(get_db)
 ):
     require_admin(current_user)
-    return schemas.FullStudentRecord(roll_no=roll_no)
+    student = await StudentService.get_accessible_student(
+        roll_no=roll_no,
+        current_user_id=current_user.id,
+        role_name=current_user.role.name if current_user.role else "admin",
+        db=db,
+    )
+
+    grades: list[schemas.SemesterGradeRecord] = []
+    internals: list[schemas.InternalMarkRecord] = []
+
+    for mark in student.marks or []:
+        subject = mark.subject
+        subject_code = subject.course_code if subject else None
+        subject_title = subject.name if subject else None
+        grades.append(
+            schemas.SemesterGradeRecord(
+                semester=mark.semester,
+                subject_code=subject_code,
+                subject_title=subject_title,
+                grade=mark.grade,
+                marks=mark.total_marks,
+                internal_marks=mark.internal_marks,
+                attempt=None,
+                remarks=getattr(mark, "result_status", None),
+                grade_point=GRADE_POINTS.get(mark.grade, None),
+            )
+        )
+
+        # Add individual CIT components as internal mark records
+        for idx, cit in enumerate([mark.cit1_marks, mark.cit2_marks, mark.cit3_marks], start=1):
+            if cit is not None:
+                internals.append(
+                    schemas.InternalMarkRecord(
+                        semester=mark.semester,
+                        test_number=idx,
+                        percentage=float(cit),
+                        subject_code=subject_code,
+                        subject_title=subject_title,
+                    )
+                )
+
+    record_health = StudentService.build_record_health(
+        contact_info=getattr(student, "contact_info", None),
+        family_details=getattr(student, "family_details", None),
+        previous_academics=getattr(student, "previous_academics", None),
+        extra_curricular=getattr(student, "extra_curricular", None),
+        counselor_diary=getattr(student, "counselor_diary", None),
+        semester_grades=grades,
+        internal_marks=internals,
+    )
+
+    return schemas.FullStudentRecord(
+        roll_no=student.roll_no,
+        core_profile=None,
+        contact_info=getattr(student, "contact_info", None),
+        family_details=getattr(student, "family_details", None),
+        previous_academics=list(getattr(student, "previous_academics", []) or []),
+        extra_curricular=list(getattr(student, "extra_curricular", []) or []),
+        counselor_diary=list(getattr(student, "counselor_diary", []) or []),
+        semester_grades=grades,
+        internal_marks=internals,
+        record_health=record_health,
+        academic_snapshot=None,
+    )
 @router.post("/assign-sections", response_model=schemas.MessageResponse)
 async def assign_student_sections(
     batch: str = Query(..., description="Batch to process"),
