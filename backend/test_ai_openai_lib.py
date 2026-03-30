@@ -1,9 +1,13 @@
 from openai import OpenAI
 import os
 
+api_key = os.getenv("AI_API_KEY")
+if not api_key:
+    raise SystemExit("Set AI_API_KEY in your environment before running this test.")
+
 client = OpenAI(
   base_url = "https://integrate.api.nvidia.com/v1",
-  api_key = "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"
+  api_key = api_key
 )
 
 try:

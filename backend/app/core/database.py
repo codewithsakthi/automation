@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     # Defaulting to DeepSeek-V3 via NVIDIA Integra API.
     # To use local Ollama, set AI_API_URL to http://localhost:11434/v1
     AI_API_URL: Optional[str] = Field(default="https://integrate.api.nvidia.com/v1", env="AI_API_URL")
-    AI_API_KEY: Optional[str] = Field(default="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", env="AI_API_KEY")
+    AI_API_KEY: Optional[str] = Field(default=None, env="AI_API_KEY")
     AI_MODEL: str = Field(default="stepfun-ai/step-3.5-flash", env="AI_MODEL")
     AI_STREAM_ENABLED: str = Field(default="true", env="AI_STREAM_ENABLED")
 

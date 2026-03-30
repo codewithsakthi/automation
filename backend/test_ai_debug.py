@@ -1,12 +1,16 @@
 import asyncio
 import httpx
 import json
+import os
 import traceback
 
 async def test():
     url = "https://integrate.api.nvidia.com/v1/chat/completions"
+    api_key = os.getenv("AI_API_KEY")
+    if not api_key:
+        raise SystemExit("Set AI_API_KEY in your environment before running this test.")
     headers = {
-        "Authorization": "Bearer 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",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
     payload = {

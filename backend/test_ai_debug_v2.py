@@ -1,12 +1,15 @@
 import asyncio
 import httpx
 import json
+import os
 
 AI_API_URL = "https://integrate.api.nvidia.com/v1"
-AI_API_KEY = "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"
+AI_API_KEY = os.getenv("AI_API_KEY")
 AI_MODEL = "deepseek-ai/deepseek-v3"
 
 async def test_ai():
+    if not AI_API_KEY:
+        raise SystemExit("Set AI_API_KEY in your environment before running this test.")
     url = f"{AI_API_URL.rstrip('/')}/chat/completions"
     headers = {
         "Authorization": f"Bearer {AI_API_KEY}",

@@ -1,10 +1,15 @@
 import asyncio
 import httpx
+import os
 
 async def list_models():
     url = "https://integrate.api.nvidia.com/v1/models"
+    api_key = os.getenv("AI_API_KEY")
+    if not api_key:
+        print("AI_API_KEY not set in environment.")
+        return
     headers = {
-        "Authorization": "Bearer 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"
+        "Authorization": f"Bearer {api_key}"
     }
     async with httpx.AsyncClient() as client:
         try:
